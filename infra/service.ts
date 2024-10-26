@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { App, Duration, Stack, StackProps } from 'aws-cdk-lib';
+import { App, Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import {
   aws_cloudwatch as cloudwatch,
   aws_ec2 as ec2,
@@ -40,15 +40,11 @@ class BlueskyPdsInfraStack extends Stack {
       ecrRepositoryPrefix: 'github-bluesky',
       upstreamRegistryUrl: 'ghcr.io',
     });
-    new ecr.CfnRepositoryCreationTemplate(this, 'PullThroughCacheRepoTemplate', {
-      appliedFor: ['PULL_THROUGH_CACHE'],
-      prefix: 'github-bluesky',
-      resourceTags: [{
-        key: 'project',
-        value: 'bluesky-pds',
-      }],
+    const cacheRepo = new ecr.Repository(this, 'CacheRepo', {
+      repositoryName: 'github-bluesky/bluesky-social/pds',
+      removalPolicy: RemovalPolicy.DESTROY,
+      emptyOnDelete: true,
     });
-    const cacheRepo = ecr.Repository.fromRepositoryName(this, 'CacheRepo', 'github-bluesky/bluesky-social/pds');
     const image = ecs.ContainerImage.fromEcrRepository(cacheRepo, '0.4');
 
     // TODO: S3 bucket for blob storage
@@ -66,6 +62,7 @@ class BlueskyPdsInfraStack extends Stack {
       propagateTags: ecs.PropagatedTagSource.SERVICE,
       // PDS server configuration
       taskImageOptions: {
+        containerName: 'pds',
         image,
         environment: {
           // TODO config
@@ -92,7 +89,7 @@ class BlueskyPdsInfraStack extends Stack {
       new iam.Policy(this, 'PullThroughCachePolicy', {
         statements: [
           new iam.PolicyStatement({
-            actions: ['ecr:CreateRepository', 'ecr:BatchImportUpstreamImage'],
+            actions: ['ecr:BatchImportUpstreamImage'],
             resources: [cacheRepo.repositoryArn],
           }),
         ],
