@@ -9,6 +9,7 @@ import {
   aws_elasticloadbalancingv2 as elb,
   aws_iam as iam,
   aws_route53 as route53,
+  aws_s3 as s3,
   aws_secretsmanager as secretsmanager,
 } from 'aws-cdk-lib';
 import { ApplicationProtocol } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
@@ -16,6 +17,7 @@ import { ApplicationProtocol } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 interface BlueskyPdsInfraStackProps extends StackProps {
   domainName: string;
   domainZone: string;
+  rootDomain: string;
 }
 
 class BlueskyPdsInfraStack extends Stack {
@@ -30,6 +32,37 @@ class BlueskyPdsInfraStack extends Stack {
       containerInsights: true,
     });
     const domainZone = route53.HostedZone.fromLookup(this, 'Zone', { domainName: props.domainZone });
+
+    // Resources for the PDS application
+    const adminPassword = new secretsmanager.Secret(this, 'AdminPassword',
+      {
+        generateSecretString: {
+          passwordLength: 16,
+        },
+      }
+    );
+    const jwtSecret = new secretsmanager.Secret(this, 'JwtSecret',
+      {
+        generateSecretString: {
+          passwordLength: 16,
+        },
+      }
+    );
+    const rotationKey = new secretsmanager.Secret(this, 'RotationKey',
+      {
+        generateSecretString: {
+          passwordLength: 32, // TODO generate key
+        },
+      }
+    );
+    // TODO mechanism for rotating the password, JWT, and rotation key
+
+    const blobBucket = new s3.Bucket(this, "BlobStorage", {
+        removalPolicy: RemovalPolicy.DESTROY,
+        autoDeleteObjects: true,
+        blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      },
+    );
 
     // ECR pull-through cache for the PDS image on GHCR
     const githubSecret = secretsmanager.Secret.fromSecretNameV2(
@@ -47,7 +80,6 @@ class BlueskyPdsInfraStack extends Stack {
     });
     const image = ecs.ContainerImage.fromEcrRepository(cacheRepo, '0.4');
 
-    // TODO: S3 bucket for blob storage
     // TODO: EFS for persistent storage of sqlite databases
 
     // Fargate service + load balancer to run PDS container image
@@ -65,8 +97,25 @@ class BlueskyPdsInfraStack extends Stack {
         containerName: 'pds',
         image,
         environment: {
-          // TODO config
-          BLUESKY_PDS_DOMAIN_NAME: props.domainName,
+          PDS_HOSTNAME: props.domainName,
+          PDS_DATA_DIRECTORY: '/pds',
+          PDS_BLOBSTORE_S3_BUCKET: blobBucket.bucketName,
+          PDS_BLOBSTORE_S3_REGION: this.region,
+          PDS_BLOBSTORE_DISK_LOCATION: '',
+          PDS_BLOB_UPLOAD_LIMIT: '52428800',
+          PDS_DID_PLC_URL: 'https://plc.directory',
+          PDS_BSKY_APP_VIEW_URL: 'https://api.bsky.app',
+          PDS_BSKY_APP_VIEW_DID: 'did:web:api.bsky.app',
+          PDS_REPORT_SERVICE_URL: 'https://mod.bsky.app',
+          PDS_REPORT_SERVICE_DID: 'did:plc:ar7c4by46qjdydhdevvrndac',
+          PDS_CRAWLERS: 'https://bsky.network',
+          PDS_SERVICE_HANDLE_DOMAINS: '.' + props.rootDomain,
+          LOG_ENABLED: 'true',
+        },
+        secrets: {
+          PDS_ADMIN_PASSWORD: ecs.Secret.fromSecretsManager(adminPassword),
+          PDS_JWT_SECRET: ecs.Secret.fromSecretsManager(jwtSecret),
+          PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ecs.Secret.fromSecretsManager(rotationKey),
         },
       },
       // PDS min system requirements: 1 CPU core, 1 GB memory, 20 GB disk
@@ -85,16 +134,15 @@ class BlueskyPdsInfraStack extends Stack {
     });
 
     // Grant ECR pull-through cache permissions
-    service.service.taskDefinition.executionRole?.attachInlinePolicy(
-      new iam.Policy(this, 'PullThroughCachePolicy', {
-        statements: [
-          new iam.PolicyStatement({
-            actions: ['ecr:BatchImportUpstreamImage'],
-            resources: [cacheRepo.repositoryArn],
-          }),
-        ],
+    service.service.taskDefinition.addToExecutionRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ecr:BatchImportUpstreamImage'],
+        resources: [cacheRepo.repositoryArn],
       }),
     );
+
+    // Permissions needed by PDS
+    blobBucket.grantReadWrite(service.service.taskDefinition.taskRole);
 
     // TODO health checks: /xrpc/_health
 
@@ -122,6 +170,7 @@ const app = new App();
 new BlueskyPdsInfraStack(app, 'BlueskyPdsInfra', {
   domainName: 'bsky-pds.aws.clare.dev',
   domainZone: 'aws.clare.dev',
+  rootDomain: 'clare.dev',
   env: { account: process.env['CDK_DEFAULT_ACCOUNT'], region: 'us-east-2' },
   tags: {
       project: "bluesky-pds"
