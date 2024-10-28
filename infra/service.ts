@@ -8,6 +8,7 @@ import {
   aws_ecs_patterns as patterns,
   aws_elasticloadbalancingv2 as elb,
   aws_iam as iam,
+  aws_kms as kms,
   aws_route53 as route53,
   aws_s3 as s3,
   aws_secretsmanager as secretsmanager,
@@ -48,13 +49,12 @@ class BlueskyPdsInfraStack extends Stack {
         },
       }
     );
-    const rotationKey = new secretsmanager.Secret(this, 'RotationKey',
-      {
-        generateSecretString: {
-          passwordLength: 32, // TODO generate key
-        },
-      }
-    );
+    const rotationKey = new kms.Key(this, 'RotationKey', {
+      keySpec: kms.KeySpec.ECC_SECG_P256K1,
+      keyUsage: kms.KeyUsage.SIGN_VERIFY,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
     // TODO mechanism for rotating the password, JWT, and rotation key
 
     const blobBucket = new s3.Bucket(this, "BlobStorage", {
@@ -99,6 +99,7 @@ class BlueskyPdsInfraStack extends Stack {
         environment: {
           PDS_HOSTNAME: props.domainName,
           PDS_DATA_DIRECTORY: '/pds',
+          PDS_PLC_ROTATION_KEY_KMS_KEY_ID: rotationKey.keyId,
           PDS_BLOBSTORE_S3_BUCKET: blobBucket.bucketName,
           PDS_BLOBSTORE_S3_REGION: this.region,
           PDS_BLOBSTORE_DISK_LOCATION: '',
@@ -115,7 +116,6 @@ class BlueskyPdsInfraStack extends Stack {
         secrets: {
           PDS_ADMIN_PASSWORD: ecs.Secret.fromSecretsManager(adminPassword),
           PDS_JWT_SECRET: ecs.Secret.fromSecretsManager(jwtSecret),
-          PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ecs.Secret.fromSecretsManager(rotationKey),
         },
       },
       // PDS min system requirements: 1 CPU core, 1 GB memory, 20 GB disk
@@ -143,6 +143,7 @@ class BlueskyPdsInfraStack extends Stack {
 
     // Permissions needed by PDS
     blobBucket.grantReadWrite(service.service.taskDefinition.taskRole);
+    rotationKey.grant(service.service.taskDefinition.taskRole, 'kms:GetPublicKey', 'kms:Sign');
 
     // TODO health checks: /xrpc/_health
 
