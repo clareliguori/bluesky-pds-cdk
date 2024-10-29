@@ -80,8 +80,6 @@ class BlueskyPdsInfraStack extends Stack {
     });
     const image = ecs.ContainerImage.fromEcrRepository(cacheRepo, '0.4');
 
-    // TODO: EFS for persistent storage of sqlite databases
-
     // Fargate service + load balancer to run PDS container image
     const service = new patterns.ApplicationLoadBalancedFargateService(this, 'Service', {
       cluster,
@@ -96,9 +94,12 @@ class BlueskyPdsInfraStack extends Stack {
       taskImageOptions: {
         containerName: 'pds',
         image,
+        containerPort: 3000,
         environment: {
+          // TODO OAuth config
           PDS_HOSTNAME: props.domainName,
-          PDS_DATA_DIRECTORY: '/pds',
+          PDS_PORT: "3000",
+          PDS_DATA_DIRECTORY: '/tmp',  // TODO: EFS for persistent storage of sqlite databases
           PDS_PLC_ROTATION_KEY_KMS_KEY_ID: rotationKey.keyId,
           PDS_BLOBSTORE_S3_BUCKET: blobBucket.bucketName,
           PDS_BLOBSTORE_S3_REGION: this.region,
