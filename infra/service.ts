@@ -9,6 +9,7 @@ import {
   aws_elasticloadbalancingv2 as elb,
   aws_iam as iam,
   aws_kms as kms,
+  aws_logs as logs,
   aws_route53 as route53,
   aws_s3 as s3,
   aws_secretsmanager as secretsmanager,
@@ -25,8 +26,10 @@ class BlueskyPdsInfraStack extends Stack {
   constructor(parent: App, name: string, props: BlueskyPdsInfraStackProps) {
     super(parent, name, props);
 
-    // Network infrastructure
-    const vpc = new ec2.Vpc(this, 'VPC', { maxAzs: 2 });
+    // Network infrastructure - use existing default VPC
+    const vpc = ec2.Vpc.fromLookup(this, 'Vpc', {
+      isDefault: true,
+    });
     const cluster = new ecs.Cluster(this, 'Cluster', {
       clusterName: props.domainName.replace(/\./g, '-'),
       vpc,
@@ -89,12 +92,20 @@ class BlueskyPdsInfraStack extends Stack {
       domainZone,
       protocol: ApplicationProtocol.HTTPS,
       redirectHTTP: true,
+      assignPublicIp: true,
       propagateTags: ecs.PropagatedTagSource.SERVICE,
       // PDS server configuration
       taskImageOptions: {
         containerName: 'pds',
         image,
         containerPort: 3000,
+        logDriver: ecs.LogDriver.awsLogs({
+          streamPrefix: 'PDSService',
+          logGroup: new logs.LogGroup(this, 'ServiceLogGroup', {
+            retention: logs.RetentionDays.ONE_MONTH,
+            removalPolicy: RemovalPolicy.DESTROY,
+          }),
+        }),
         environment: {
           // TODO OAuth config
           PDS_HOSTNAME: props.domainName,
