@@ -130,8 +130,8 @@ class BlueskyPdsInfraStack extends Stack {
         },
       },
       // PDS min system requirements: 1 CPU core, 1 GB memory, 20 GB disk
-      cpu: 2048,
-      memoryLimitMiB: 4096,
+      cpu: 1024,
+      memoryLimitMiB: 2048, // lowest mem value allowed in Fargate for 1 CPU
       // Only let 1 PDS instance run at a time.
       // Deployments will take down the old task before starting a new one
       maxHealthyPercent: 100,
