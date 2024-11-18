@@ -116,8 +116,10 @@ class BlueskyPdsInfraStack extends Stack {
           // TODO OAuth config
           PDS_HOSTNAME: props.domainName,
           PDS_PORT: "3000",
-          PDS_DATA_DIRECTORY: '/tmp',  // TODO: EFS for persistent storage of sqlite databases
+          PDS_DATA_DIRECTORY: '/pds',
           PDS_PLC_ROTATION_KEY_KMS_KEY_ID: rotationKey.keyId,
+          AWS_REGION: this.region,
+          AWS_DEFAULT_REGION: this.region,
           PDS_BLOBSTORE_S3_BUCKET: blobBucket.bucketName,
           PDS_BLOBSTORE_S3_REGION: this.region,
           PDS_BLOBSTORE_DISK_LOCATION: '',
