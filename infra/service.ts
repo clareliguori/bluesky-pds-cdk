@@ -33,7 +33,6 @@ class BlueskyPdsInfraStack extends Stack {
     const cluster = new ecs.Cluster(this, 'Cluster', {
       clusterName: props.domainName.replace(/\./g, '-'),
       vpc,
-      containerInsights: true,
     });
     const domainZone = route53.HostedZone.fromLookup(this, 'Zone', { domainName: props.domainZone });
 
