@@ -26,9 +26,15 @@ class BlueskyPdsInfraStack extends Stack {
   constructor(parent: App, name: string, props: BlueskyPdsInfraStackProps) {
     super(parent, name, props);
 
-    // Network infrastructure - use existing default VPC
-    const vpc = ec2.Vpc.fromLookup(this, 'Vpc', {
-      isDefault: true,
+    // Network infrastructure
+    const vpc = new ec2.Vpc(this, 'Vpc', {
+      maxAzs: 2,
+      subnetConfiguration: [
+        {
+          name: 'Public',
+          subnetType: ec2.SubnetType.PUBLIC,
+        }
+      ],
     });
     const cluster = new ecs.Cluster(this, 'Cluster', {
       clusterName: props.domainName.replace(/\./g, '-'),
@@ -93,6 +99,7 @@ class BlueskyPdsInfraStack extends Stack {
       redirectHTTP: true,
       assignPublicIp: true,
       propagateTags: ecs.PropagatedTagSource.SERVICE,
+      ipAddressType: elb.IpAddressType.DUAL_STACK_WITHOUT_PUBLIC_IPV4,
       // PDS server configuration
       taskImageOptions: {
         containerName: 'pds',
