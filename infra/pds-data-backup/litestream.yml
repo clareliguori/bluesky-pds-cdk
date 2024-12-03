@@ -1,0 +1,16 @@
+# The list of PDS SQLite databases to replicate to S3 and restore from S3
+dbs:
+  - path: $LOCAL_PATH/account.sqlite
+    replicas:
+      - url: $S3_PATH/account.sqlite
+        region: $AWS_DEFAULT_REGION
+
+  - path: $LOCAL_PATH/did_cache.sqlite
+    replicas:
+      - url: $S3_PATH/did_cache.sqlite
+        region: $AWS_DEFAULT_REGION
+
+  - path: $LOCAL_PATH/sequencer.sqlite
+    replicas:
+      - url: $S3_PATH/sequencer.sqlite
+        region: $AWS_DEFAULT_REGION

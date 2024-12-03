@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
 
-# This script syncs PDS on-disk data to an S3 bucket, such as sqlite files.
+# This script syncs PDS on-disk data (SQLite databases) to an S3 bucket.
 # When the container starts, the script will sync from the S3 bucket to the local directory
 # to initialize its local data.
-# Then, every 15 minutes, it will sync any changes from the local directory to the S3 bucket.
+# Then, it will continuously sync database changes from the local directory to the S3 bucket.
 # On shutdown (SIGTERM), the container will sync from the local directory to the S3 bucket one last time.
-
-# This script was originally based on vladgh/s3sync
-# https://github.com/vladgh/docker_base_images/tree/main/s3sync
 
 # Required environment variables:
 # AWS_DEFAULT_REGION: the region of the S3 bucket
@@ -18,65 +15,45 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-# Every 15 minutes
-CRON_TIME="*/15 * * * *"
-
 # Log message
 log(){
   echo "[$(date "+%Y-%m-%dT%H:%M:%S%z") - $(hostname)] ${*}"
 }
 
-# Sync files
-sync_files(){
-  local src dst sync_cmd
-  src="${1:-}"
-  dst="${2:-}"
+# Restore from S3
+function restore() {
+    local db="$1"
 
-  sync_cmd="--no-progress --delete --exact-timestamps";
-
-  log "Sync '${src}' to '${dst}'"
-  if ! eval aws s3 sync "$sync_cmd" "$src" "$dst"; then
-    log "Could not sync '${src}' to '${dst}'" >&2; exit 1
-  fi
-}
-
-# Download files
-download_files(){
-  sync_files "$S3_PATH" "$LOCAL_PATH"
-  touch /tmp/download_success
-}
-
-# Upload files
-upload_files(){
-  sync_files "$LOCAL_PATH" "$S3_PATH"
-  touch /tmp/upload_success
-}
-
-# Run initial download
-initial_download(){
-  if [[ -d "$LOCAL_PATH" ]]; then
-    # directory exists
-    if [[ $(ls -A "$LOCAL_PATH" 2>/dev/null) ]]; then
-      # directory is not empty
-      log "${LOCAL_PATH} is not empty; cannot do initial download"; exit 1
-    else
-      # directory exists and is empty
-      download_files
+    # Check if DB is provided
+    if [ -z "$db" ]; then
+        echo "Error: DB argument is required"
+        exit 1
     fi
-  else
-    # directory does not exist
-    log "${LOCAL_PATH} does not exist; cannot do initial download"; exit 1
-  fi
+
+   log "Restore $db"
+   # The restore command will fail if the file is already on disk,
+   # but will succeed if there is no backup found on S3
+   if ! eval litestream restore -if-replica-exists "$LOCAL_PATH"/"$db"; then
+     log "Could not restore $db" >&2; exit 1
+   fi
 }
 
-# Install cron job that periodically syncs to S3
-run_upload_cron(){
-  # Download initial data
-  initial_download
+# Restore from S3 on startup
+restore_all_dbs(){
+  rm -f /tmp/restore_success
+  # TODO figure out a good way to keep this list in sync with config file
+  restore account.sqlite
+  restore did_cache.sqlite
+  restore sequencer.sqlite
+  touch /tmp/restore_success
+}
 
-  log "Setup the cron job (${CRON_TIME})"
-  echo "${CRON_TIME} /entrypoint.sh upload" > /etc/crontabs/root
-  crond -f -l 6
+# Start litestream replication
+replicate_all_dbs(){
+  log "Start litestream replication"
+  # Replace this process with litestream replicate process.
+  # Litestream will handle graceful shutdown of replication.
+  exec litestream replicate
 }
 
 # Main function
@@ -84,39 +61,16 @@ main(){
   if [[ ! "$S3_PATH" =~ s3:// ]]; then
     log 'No S3_PATH specified' >&2; exit 1
   fi
-
-  # Parse command line arguments
-  cmd="${1:-periodic_upload}"
-  case "$cmd" in
-    upload)
-      upload_files
-      ;;
-    periodic_upload)
-      run_upload_cron
-      ;;
-    *)
-      log "Unknown command: ${cmd}"; exit 1
-      ;;
-  esac
-}
-
-# Sigterm Handler
-# See https://aws.amazon.com/blogs/containers/graceful-shutdowns-with-ecs/
-graceful_shutdown_handler() {
-  log "Received SIGTERM, gracefully shutting down"
-
-  # The initial data was downloaded successfully,
-  # so we can safely upload any changes to the bucket
-  if [ -f /tmp/download_success ]; then
-    upload_files
+  if [[ ! "$LOCAL_PATH" =~ / ]]; then
+    log 'No LOCAL_PATH specified' >&2; exit 1
   fi
-  exit 143; # 128 + 15 -- SIGTERM
+
+  log "Litestream configuration"
+  litestream databases
+
+  restore_all_dbs
+
+  replicate_all_dbs
 }
 
-trap 'graceful_shutdown_handler' SIGTERM
-
-trap "log 'Received SIGINT'" SIGINT
-trap "log 'Received SIGKILL'" SIGKILL
-trap "log 'Received SIGQUIT'" SIGQUIT
-
-main "$@"
+main

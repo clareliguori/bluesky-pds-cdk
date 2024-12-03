@@ -4,9 +4,9 @@
 
 # Validate that the sync container has synced on startup successfully,
 # from the S3 bucket to the local directory.
-# The file /tmp/download_success should exist.
-if [ ! -f /tmp/download_success ]; then
-  echo "Download failed, exiting."
+# The file /tmp/restore_success should exist.
+if [ ! -f /tmp/restore_success ]; then
+  echo "Database restore failed, exiting."
   exit 1
 fi
 

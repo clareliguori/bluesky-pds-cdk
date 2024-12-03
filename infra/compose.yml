@@ -59,7 +59,7 @@ services:
       start_period: 1m
       start_interval: 5s
     stop_signal: SIGTERM
-    stop_grace_period: 30s
+    stop_grace_period: 1m
     environment:
       AWS_REGION: 'us-east-2'
       AWS_DEFAULT_REGION: 'us-east-2'
