@@ -14,3 +14,8 @@ dbs:
     replicas:
       - url: $S3_PATH/sequencer.sqlite
         region: $AWS_DEFAULT_REGION
+
+  - path: $LOCAL_PATH/actors.sqlite
+    replicas:
+      - url: $S3_PATH/actors.sqlite
+        region: $AWS_DEFAULT_REGION

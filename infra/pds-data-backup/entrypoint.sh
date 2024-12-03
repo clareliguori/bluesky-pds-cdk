@@ -45,6 +45,7 @@ restore_all_dbs(){
   restore account.sqlite
   restore did_cache.sqlite
   restore sequencer.sqlite
+  restore actors.sqlite
   touch /tmp/restore_success
 }
 
