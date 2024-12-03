@@ -4,6 +4,7 @@ import {
   aws_cloudwatch as cloudwatch,
   aws_ec2 as ec2,
   aws_ecr as ecr,
+  aws_ecr_assets as ecr_assets,
   aws_ecs as ecs,
   aws_ecs_patterns as patterns,
   aws_elasticloadbalancingv2 as elb,
@@ -72,6 +73,13 @@ class BlueskyPdsInfraStack extends Stack {
       },
     );
 
+    const dataBackupBucket = new s3.Bucket(this, "DataBackupStorage", {
+        removalPolicy: RemovalPolicy.DESTROY,
+        autoDeleteObjects: true,
+        blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      },
+    );
+
     // ECR pull-through cache for the PDS image on GHCR
     const githubSecret = secretsmanager.Secret.fromSecretNameV2(
       this, 'GitHubToken', 'ecr-pullthroughcache/bluesky-pds-image-github-token',
@@ -99,7 +107,6 @@ class BlueskyPdsInfraStack extends Stack {
       redirectHTTP: true,
       assignPublicIp: true,
       propagateTags: ecs.PropagatedTagSource.SERVICE,
-      ipAddressType: elb.IpAddressType.DUAL_STACK_WITHOUT_PUBLIC_IPV4,
       // PDS server configuration
       taskImageOptions: {
         containerName: 'pds',
@@ -138,6 +145,9 @@ class BlueskyPdsInfraStack extends Stack {
           PDS_JWT_SECRET: ecs.Secret.fromSecretsManager(jwtSecret),
         },
       },
+      healthCheck: {
+        command: ['CMD-SHELL', "node -e 'fetch(`http://localhost:3000/xrpc/_health`).then(()=>process.exitCode = 0).catch(()=>process.exitCode = 1)'"],
+      },
       // PDS min system requirements: 1 CPU core, 1 GB memory, 20 GB disk
       cpu: 1024,
       memoryLimitMiB: 2048, // lowest mem value allowed in Fargate for 1 CPU
@@ -153,6 +163,62 @@ class BlueskyPdsInfraStack extends Stack {
       enableExecuteCommand: true,
     });
 
+    service.targetGroup.configureHealthCheck({
+      path: '/xrpc/_health',
+    });
+
+    // Add sidecar container that backs up and restores the PDS data to/from S3
+    const sidecar = service.taskDefinition.addContainer('SyncContainer',
+      {
+        containerName: 's3_sync',
+        image: ecs.ContainerImage.fromAsset(
+          './pds-data-backup',
+          {
+            platform: ecr_assets.Platform.LINUX_AMD64,
+          }
+        ),
+        logging: ecs.LogDriver.awsLogs({
+          streamPrefix: 'PDSS3Sync',
+          logGroup: new logs.LogGroup(this, 'PDSS3SyncLogGroup', {
+            retention: logs.RetentionDays.ONE_MONTH,
+            removalPolicy: RemovalPolicy.DESTROY,
+          }),
+        }),
+        environment: {
+          AWS_REGION: this.region,
+          AWS_DEFAULT_REGION: this.region,
+          S3_PATH: `s3://${dataBackupBucket.bucketName}/pds-backup`,
+          LOCAL_PATH: '/sync',
+        },
+        healthCheck: {
+          command: ['CMD', '/healthcheck.sh'],
+        },
+        stopTimeout: Duration.minutes(1),
+      }
+    );
+
+    // Create a volume for the PDS data
+    service.taskDefinition.addVolume({
+      name: 'pds-data',
+      host: {},
+    });
+    sidecar.addMountPoints({
+      containerPath: '/sync',
+      readOnly: false,
+      sourceVolume: 'pds-data',
+    });
+    service.taskDefinition.findContainer('pds')!.addMountPoints({
+      containerPath: '/pds',
+      readOnly: false,
+      sourceVolume: 'pds-data',
+    });
+
+    // Ensure that databases have been restored in the sidecar container before starting PDS
+    service.taskDefinition.findContainer('pds')!.addContainerDependencies({
+      container: sidecar,
+      condition: ecs.ContainerDependencyCondition.HEALTHY,
+    });
+
     // Grant ECR pull-through cache permissions
     service.service.taskDefinition.addToExecutionRolePolicy(
       new iam.PolicyStatement({
@@ -161,11 +227,10 @@ class BlueskyPdsInfraStack extends Stack {
       }),
     );
 
-    // Permissions needed by PDS
+    // Permissions needed by containers
+    dataBackupBucket.grantReadWrite(service.service.taskDefinition.taskRole);
     blobBucket.grantReadWrite(service.service.taskDefinition.taskRole);
     rotationKey.grant(service.service.taskDefinition.taskRole, 'kms:GetPublicKey', 'kms:Sign');
-
-    // TODO health checks: /xrpc/_health
 
     // Alarms: monitor 500s and unhealthy hosts on target groups
     new cloudwatch.Alarm(this, 'TargetGroupUnhealthyHosts', {
