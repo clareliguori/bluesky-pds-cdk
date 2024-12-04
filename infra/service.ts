@@ -36,6 +36,11 @@ class BlueskyPdsInfraStack extends Stack {
   constructor(parent: App, name: string, props: BlueskyPdsInfraStackProps) {
     super(parent, name, props);
 
+    // TODO add a 'production' mode for the template
+    // that removes all the 'DESTROY' removal policies,
+    // so that a production stack doesn't lose data
+    // It's nice for testing to wipe everything clean.
+
     // Network infrastructure
     const vpc = new ec2.Vpc(this, 'Vpc', {
       maxAzs: 2,
@@ -73,6 +78,7 @@ class BlueskyPdsInfraStack extends Stack {
 
     // TODO mechanism for rotating the password, JWT, and rotation key
 
+    // TODO force HTTPS for buckets
     const blobBucket = new s3.Bucket(this, 'BlobStorage', {
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,

@@ -11,7 +11,7 @@ import {
 } from 'aws-cdk-lib';
 
 /**
- * Pipeline that deploys the Bluesky PDS and associated infrastructure.
+ * Pipeline that deploys a Bluesky PDS and associated infrastructure.
  * [GitHub source] -> [Deploy CloudFormation stack]
  */
 class BlueskyPdsPipelineStack extends Stack {
