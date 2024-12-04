@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { App, Stack, StackProps } from 'aws-cdk-lib';
+import { App, Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import {
   aws_codebuild as codebuild,
   aws_codepipeline as codepipeline,
@@ -7,6 +7,7 @@ import {
   aws_codestarnotifications as notifications,
   aws_codepipeline_actions as actions,
   aws_iam as iam,
+  aws_s3 as s3,
 } from 'aws-cdk-lib';
 
 /**
@@ -17,9 +18,24 @@ class BlueskyPdsPipelineStack extends Stack {
   constructor(parent: App, name: string, props?: StackProps) {
     super(parent, name, props);
 
+    const artifactBucket = new s3.Bucket(this, 'ArtifactBucket', {
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      lifecycleRules: [
+        {
+          id: 'clean-up-old-artifacts',
+          expiration: Duration.days(90),
+          abortIncompleteMultipartUploadAfter: Duration.days(1),
+        },
+      ],
+    });
+
     const pipeline = new codepipeline.Pipeline(this, 'Pipeline', {
       pipelineName: 'bluesky-pds',
       restartExecutionOnUpdate: true,
+      pipelineType: codepipeline.PipelineType.V1,
+      artifactBucket,
     });
 
     new notifications.CfnNotificationRule(this, 'PipelineNotifications', {
@@ -82,7 +98,7 @@ class BlueskyPdsPipelineStack extends Stack {
                 'cd $CODEBUILD_SRC_DIR/pipeline',
                 'npm ci',
                 'npm run build',
-                `cdk deploy --app 'node src/pipeline.js' --require-approval=never`,
+                `cdk deploy --app 'node pipeline.js' --require-approval=never`,
               ],
             },
           },
@@ -134,7 +150,7 @@ class BlueskyPdsPipelineStack extends Stack {
               'cd $CODEBUILD_SRC_DIR/infra',
               'npm ci',
               'npm run build',
-              `cdk deploy --app 'node src/service.js' --require-approval=never`,
+              `cdk deploy --app 'node service.js' --require-approval=never`,
             ],
           },
         },
@@ -164,7 +180,7 @@ class BlueskyPdsPipelineStack extends Stack {
 }
 
 const app = new App();
-new BlueskyPdsPipelineStack(app, 'BlueskyPdsPipelinePipeline', {
+new BlueskyPdsPipelineStack(app, 'BlueskyPdsPipeline', {
   env: { account: process.env['CDK_DEFAULT_ACCOUNT'], region: 'us-east-2' },
   tags: {
     project: 'bluesky-pds',
