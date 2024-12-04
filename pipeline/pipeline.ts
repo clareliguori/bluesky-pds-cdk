@@ -68,6 +68,7 @@ class BlueskyPdsPipelineStack extends Stack {
       actionName: 'GitHubSource',
       owner: 'clareliguori',
       repo: 'bluesky-pds-cdk',
+      branch: 'main',
       connectionArn: githubConnection.attrConnectionArn,
       output: sourceOutput,
     });
