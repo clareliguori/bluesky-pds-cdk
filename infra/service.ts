@@ -283,8 +283,8 @@ class BlueskyPdsInfraStack extends Stack {
 
 const app = new App();
 new BlueskyPdsInfraStack(app, 'BlueskyPdsInfra', {
-  domainName: 'bsky-pds.aws.clare.dev',
-  domainZone: 'aws.clare.dev',
+  domainName: 'pds.clare.dev',
+  domainZone: 'pds.clare.dev',
   rootDomain: 'clare.dev',
   env: { account: process.env['CDK_DEFAULT_ACCOUNT'], region: 'us-east-2' },
   tags: {
