@@ -319,7 +319,7 @@ class BlueskyPdsInfraStack extends Stack {
       'kms:Sign'
     );
 
-    // Alarms: monitor 500s and unhealthy hosts on target groups
+    // Alarms
     const topic = sns.Topic.fromTopicArn(
       this,
       'AlarmTopic',
@@ -336,6 +336,8 @@ class BlueskyPdsInfraStack extends Stack {
       {
         alarmName: this.stackName + '-Unhealthy-Hosts',
         metric: service.targetGroup.metrics.unhealthyHostCount(),
+        comparisonOperator:
+          cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
         threshold: 1,
         evaluationPeriods: 2,
       }
@@ -358,12 +360,30 @@ class BlueskyPdsInfraStack extends Stack {
     );
     noHostsAlarm.addAlarmAction(new cw_actions.SnsAction(topic));
 
+    const tooManyHostsAlarm = new cloudwatch.Alarm(
+      this,
+      'TargetGroupTooManyHealthyHosts',
+      {
+        alarmName: this.stackName + '-Too-Many-Healthy-Hosts',
+        metric: service.targetGroup.metrics.healthyHostCount({
+          statistic: cloudwatch.Stats.MAXIMUM,
+        }),
+        comparisonOperator:
+          cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+        threshold: 1,
+        evaluationPeriods: 1,
+      }
+    );
+    tooManyHostsAlarm.addAlarmAction(new cw_actions.SnsAction(topic));
+
     const faultAlarm = new cloudwatch.Alarm(this, 'TargetGroup5xx', {
       alarmName: this.stackName + '-Http-500',
       metric: service.targetGroup.metrics.httpCodeTarget(
         elb.HttpCodeTarget.TARGET_5XX_COUNT,
         { period: Duration.minutes(1) }
       ),
+      comparisonOperator:
+        cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
       threshold: 1,
       evaluationPeriods: 1,
     });
