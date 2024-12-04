@@ -4,8 +4,7 @@
 
 This guide assumes that you already registered a domain name to use with your PDS and created a
 [Route53 hosted zone](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/AboutHZWorkingWith.html)
-for the domain name in your AWS account.  The CDK template will provision subdomain for the PDS under your
-existing domain.
+for the domain name in your AWS account.
 
 This guide also assumes you have completed the
 [AWS CDK prerequisites](https://docs.aws.amazon.com/cdk/v2/guide/prerequisites.html)
@@ -71,6 +70,18 @@ cdk bootstrap --profile default aws://<aws account id>/us-east-2
 cdk synth --profile default -o build --app 'node service.js'
 
 cdk deploy --profile default --app 'node service.js'
+```
+
+Your PDS should now be accessible:
+
+```
+curl https://example.com/xrpc/_health
+```
+
+WebSockets should also work:
+
+```
+wsdump "wss://example.com/xrpc/com.atproto.sync.subscribeRepos?cursor=0"
 ```
 
 # Deploy a CI/CD pipeline (optional)
