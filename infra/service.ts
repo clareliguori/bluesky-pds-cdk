@@ -1,7 +1,15 @@
 #!/usr/bin/env node
-import { App, Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import {
+  App,
+  ArnFormat,
+  Duration,
+  RemovalPolicy,
+  Stack,
+  StackProps,
+} from 'aws-cdk-lib';
 import {
   aws_cloudwatch as cloudwatch,
+  aws_cloudwatch_actions as cw_actions,
   aws_ec2 as ec2,
   aws_ecr as ecr,
   aws_ecr_assets as ecr_assets,
@@ -14,6 +22,7 @@ import {
   aws_route53 as route53,
   aws_s3 as s3,
   aws_secretsmanager as secretsmanager,
+  aws_sns as sns,
 } from 'aws-cdk-lib';
 import { ApplicationProtocol } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
@@ -237,14 +246,29 @@ class BlueskyPdsInfraStack extends Stack {
     );
 
     // Alarms: monitor 500s and unhealthy hosts on target groups
-    new cloudwatch.Alarm(this, 'TargetGroupUnhealthyHosts', {
-      alarmName: this.stackName + '-Unhealthy-Hosts',
-      metric: service.targetGroup.metrics.unhealthyHostCount(),
-      threshold: 1,
-      evaluationPeriods: 2,
-    });
+    const topic = sns.Topic.fromTopicArn(
+      this,
+      'AlarmTopic',
+      Stack.of(this).formatArn({
+        service: 'sns',
+        resource: 'bluesky-pds-notifications',
+        arnFormat: ArnFormat.NO_RESOURCE_NAME,
+      })
+    );
 
-    new cloudwatch.Alarm(this, 'TargetGroup5xx', {
+    const unhealthyAlarm = new cloudwatch.Alarm(
+      this,
+      'TargetGroupUnhealthyHosts',
+      {
+        alarmName: this.stackName + '-Unhealthy-Hosts',
+        metric: service.targetGroup.metrics.unhealthyHostCount(),
+        threshold: 1,
+        evaluationPeriods: 2,
+      }
+    );
+    unhealthyAlarm.addAlarmAction(new cw_actions.SnsAction(topic));
+
+    const faultAlarm = new cloudwatch.Alarm(this, 'TargetGroup5xx', {
       alarmName: this.stackName + '-Http-500',
       metric: service.targetGroup.metrics.httpCodeTarget(
         elb.HttpCodeTarget.TARGET_5XX_COUNT,
@@ -253,6 +277,7 @@ class BlueskyPdsInfraStack extends Stack {
       threshold: 1,
       evaluationPeriods: 1,
     });
+    faultAlarm.addAlarmAction(new cw_actions.SnsAction(topic));
   }
 }
 

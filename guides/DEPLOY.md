@@ -41,6 +41,22 @@ aws secretsmanager create-secret \
     --secret-string "{\"username\": \"<your GitHub username>\", \"accessToken\": \"<your token>\"}"
 ```
 
+## Create an SNS topic
+
+Create an SNS topic for notifications about alarms and pipeline execution failures (configured later on).
+
+```bash
+aws sns create-topic \
+    --profile default \
+    --name bluesky-pds-notifications \
+    --tags Key=project,Value=bluesky-pds \
+    --region us-east-2
+```
+
+You can now subscribe an email address or a
+[chat bot](https://docs.aws.amazon.com/chatbot/latest/adminguide/setting-up.html)
+to the topic to receive notifications.
+
 ## Deploy the PDS
 
 ```bash
@@ -55,20 +71,6 @@ cdk bootstrap --profile default aws://<aws account id>/us-east-2
 cdk synth --profile default -o build --app 'node service.js'
 
 cdk deploy --profile default --app 'node service.js'
-```
-
-## Set up notifications via SNS
-
-Create an SNS topic for notifications about alarms and pipeline execution failures.
-An email address or a [chat bot](https://docs.aws.amazon.com/chatbot/latest/adminguide/setting-up.html)
-can be subscribed to the topic to receive notifications about alarms and pipeline failures.
-
-```bash
-aws sns create-topic \
-    --profile default \
-    --name bluesky-pds-notifications \
-    --tags Key=project,Value=bluesky-pds \
-    --region us-east-2
 ```
 
 # Deploy a CI/CD pipeline (optional)
