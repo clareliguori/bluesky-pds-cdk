@@ -51,6 +51,9 @@ class BlueskyPdsInfraStack extends Stack {
         },
       ],
     });
+    vpc.addGatewayEndpoint('S3Endpoint', {
+      service: ec2.GatewayVpcEndpointAwsService.S3,
+    });
     const cluster = new ecs.Cluster(this, 'Cluster', {
       clusterName: props.domainName.replace(/\./g, '-'),
       vpc,
@@ -78,17 +81,19 @@ class BlueskyPdsInfraStack extends Stack {
 
     // TODO mechanism for rotating the password, JWT, and rotation key
 
-    // TODO force HTTPS for buckets
+    // TODO in production mode, enforce that access to objects is only through the VPC endpoint
     const blobBucket = new s3.Bucket(this, 'BlobStorage', {
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
     });
 
     const dataBackupBucket = new s3.Bucket(this, 'DataBackupStorage', {
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
     });
 
     // ECR pull-through cache for the PDS image on GHCR

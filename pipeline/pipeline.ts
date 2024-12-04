@@ -22,6 +22,7 @@ class BlueskyPdsPipelineStack extends Stack {
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
       lifecycleRules: [
         {
           id: 'clean-up-old-artifacts',
