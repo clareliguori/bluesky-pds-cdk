@@ -47,7 +47,7 @@ On task launch, the sidecar starts before the PDS and restores the database file
 from S3 to the local disk.
 
 For monitoring, container logs are sent to [Amazon CloudWatch](https://aws.amazon.com/cloudwatch/).
-Alarms are configured in CloudWatch on load balancer metrics: unhealthy targets and HTTP 5xx responses.
+Alarms are configured in CloudWatch on load balancer metrics.
 
 ## Deploy your PDS
 

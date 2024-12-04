@@ -26,10 +26,16 @@ import {
 } from 'aws-cdk-lib';
 import { ApplicationProtocol } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
+enum Mode {
+  PROD = 'Production',
+  TEST = 'Test',
+}
+
 interface BlueskyPdsInfraStackProps extends StackProps {
   domainName: string;
   domainZone: string;
   rootDomain: string;
+  mode: Mode;
 }
 
 class BlueskyPdsInfraStack extends Stack {
@@ -50,9 +56,6 @@ class BlueskyPdsInfraStack extends Stack {
           subnetType: ec2.SubnetType.PUBLIC,
         },
       ],
-    });
-    vpc.addGatewayEndpoint('S3Endpoint', {
-      service: ec2.GatewayVpcEndpointAwsService.S3,
     });
     const cluster = new ecs.Cluster(this, 'Cluster', {
       clusterName: props.domainName.replace(/\./g, '-'),
@@ -76,25 +79,76 @@ class BlueskyPdsInfraStack extends Stack {
     const rotationKey = new kms.Key(this, 'RotationKey', {
       keySpec: kms.KeySpec.ECC_SECG_P256K1,
       keyUsage: kms.KeyUsage.SIGN_VERIFY,
-      removalPolicy: RemovalPolicy.DESTROY,
+      removalPolicy:
+        props.mode === Mode.TEST
+          ? RemovalPolicy.DESTROY
+          : RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
     });
 
     // TODO mechanism for rotating the password, JWT, and rotation key
 
-    // TODO in production mode, enforce that access to objects is only through the VPC endpoint
     const blobBucket = new s3.Bucket(this, 'BlobStorage', {
-      removalPolicy: RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      removalPolicy:
+        props.mode === Mode.TEST
+          ? RemovalPolicy.DESTROY
+          : RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+      autoDeleteObjects: props.mode === Mode.TEST,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
     });
 
     const dataBackupBucket = new s3.Bucket(this, 'DataBackupStorage', {
-      removalPolicy: RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      removalPolicy:
+        props.mode === Mode.TEST
+          ? RemovalPolicy.DESTROY
+          : RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+      autoDeleteObjects: props.mode === Mode.TEST,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
     });
+
+    // Control access to the buckets
+    const s3Endpoint = vpc.addGatewayEndpoint('S3Endpoint', {
+      service: ec2.GatewayVpcEndpointAwsService.S3,
+    });
+    const s3EndpointPolicy = new iam.PolicyStatement({
+      actions: ['s3:*'],
+      effect: iam.Effect.ALLOW,
+      principals: [new iam.AnyPrincipal()],
+      resources: [
+        // Only these buckets can be accessed within the VPC
+        blobBucket.bucketArn,
+        blobBucket.arnForObjects('*'),
+        dataBackupBucket.bucketArn,
+        dataBackupBucket.arnForObjects('*'),
+        // ECR
+        `arn:${this.partition}:s3:::prod-${this.region}-starport-layer-bucket`,
+        `arn:${this.partition}:s3:::prod-${this.region}-starport-layer-bucket/*`,
+      ],
+    });
+    s3Endpoint.addToPolicy(s3EndpointPolicy);
+
+    // In production mode, enforce that access to objects is only through the VPC endpoint
+    if (props.mode === Mode.PROD) {
+      const s3BucketPolicy = new iam.PolicyStatement({
+        actions: [
+          's3:GetObject*',
+          's3:DeleteObject*',
+          's3:PutObject*',
+          's3:Abort*',
+        ],
+        effect: iam.Effect.DENY,
+        principals: [new iam.AnyPrincipal()],
+        resources: ['*'],
+        conditions: {
+          StringNotEquals: {
+            'aws:sourceVpce': s3Endpoint.vpcEndpointId,
+          },
+        },
+      });
+      blobBucket.addToResourcePolicy(s3BucketPolicy);
+      dataBackupBucket.addToResourcePolicy(s3BucketPolicy);
+    }
 
     // ECR pull-through cache for the PDS image on GHCR
     const githubSecret = secretsmanager.Secret.fromSecretNameV2(
@@ -109,7 +163,10 @@ class BlueskyPdsInfraStack extends Stack {
     });
     const cacheRepo = new ecr.Repository(this, 'CacheRepo', {
       repositoryName: 'github-bluesky/bluesky-social/pds',
-      removalPolicy: RemovalPolicy.DESTROY,
+      removalPolicy:
+        props.mode === Mode.TEST
+          ? RemovalPolicy.DESTROY
+          : RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
       emptyOnDelete: true,
     });
     const image = ecs.ContainerImage.fromEcrRepository(cacheRepo, '0.4');
@@ -137,7 +194,10 @@ class BlueskyPdsInfraStack extends Stack {
             streamPrefix: 'PDSService',
             logGroup: new logs.LogGroup(this, 'ServiceLogGroup', {
               retention: logs.RetentionDays.ONE_MONTH,
-              removalPolicy: RemovalPolicy.DESTROY,
+              removalPolicy:
+                props.mode === Mode.TEST
+                  ? RemovalPolicy.DESTROY
+                  : RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
             }),
           }),
           environment: {
@@ -202,7 +262,10 @@ class BlueskyPdsInfraStack extends Stack {
         streamPrefix: 'PDSS3Sync',
         logGroup: new logs.LogGroup(this, 'PDSS3SyncLogGroup', {
           retention: logs.RetentionDays.ONE_MONTH,
-          removalPolicy: RemovalPolicy.DESTROY,
+          removalPolicy:
+            props.mode === Mode.TEST
+              ? RemovalPolicy.DESTROY
+              : RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
         }),
       }),
       environment: {
@@ -279,6 +342,22 @@ class BlueskyPdsInfraStack extends Stack {
     );
     unhealthyAlarm.addAlarmAction(new cw_actions.SnsAction(topic));
 
+    const noHostsAlarm = new cloudwatch.Alarm(
+      this,
+      'TargetGroupNoHealthyHosts',
+      {
+        alarmName: this.stackName + '-No-Healthy-Hosts',
+        metric: service.targetGroup.metrics.healthyHostCount({
+          statistic: cloudwatch.Stats.MINIMUM,
+        }),
+        comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+        threshold: 1,
+        evaluationPeriods: 2,
+        treatMissingData: cloudwatch.TreatMissingData.BREACHING,
+      }
+    );
+    noHostsAlarm.addAlarmAction(new cw_actions.SnsAction(topic));
+
     const faultAlarm = new cloudwatch.Alarm(this, 'TargetGroup5xx', {
       alarmName: this.stackName + '-Http-500',
       metric: service.targetGroup.metrics.httpCodeTarget(
@@ -294,6 +373,7 @@ class BlueskyPdsInfraStack extends Stack {
 
 const app = new App();
 new BlueskyPdsInfraStack(app, 'BlueskyPdsInfra', {
+  mode: Mode.TEST,
   domainName: 'pds.clare.dev',
   domainZone: 'pds.clare.dev',
   rootDomain: 'clare.dev',

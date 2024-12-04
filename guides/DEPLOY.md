@@ -58,6 +58,13 @@ to the topic to receive notifications.
 
 ## Deploy the PDS
 
+By default, the template will deploy in a test mode, where all data is cleaned up
+from the account (S3 objects, CloudWatch logs, etc) when the CloudFormation stack is
+deleted. In the production mode, data is retained in the account if the CloudFormation
+stack is accidentally deleted or if certain resources are accidentally replaced in
+the stack.  If you are ready to deploy in production mode, edit `infra/service.ts`,
+and replace `mode: Mode.TEST` with `mode: Mode.PROD`.
+
 ```bash
 cd infra/
 
