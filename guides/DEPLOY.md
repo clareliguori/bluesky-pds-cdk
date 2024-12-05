@@ -22,24 +22,6 @@ find and replace all references to 'us-east-2'.
 
 Commit and push these changes to your fork on GitHub.
 
-## Create a GitHub token
-
-A GitHub personal access token is needed for ECR to pull the PDS container image from GitHub Container Registry and cache it.
-
-Create a [personal access token](https://github.com/settings/personal-access-tokens/new).
-The token should have "Public Repositories (read-only)" access and no account permissions.
-
-Copy the generated token, and create a Secrets Manager secret containing the token:
-```bash
-aws secretsmanager create-secret \
-    --profile default \
-    --region us-east-2 \
-    --name "ecr-pullthroughcache/bluesky-pds-image-github-token" \
-    --description "For access to the public Bluesky PDS image in GitHub Container Registry" \
-    --tags Key=project,Value=bluesky-pds \
-    --secret-string "{\"username\": \"<your GitHub username>\", \"accessToken\": \"<your token>\"}"
-```
-
 ## Create an SNS topic
 
 Create an SNS topic for notifications about alarms.

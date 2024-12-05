@@ -33,10 +33,9 @@ is running at a time. In case of an unhealthy task, ECS will terminate the task 
 start a new one in either of the two AZs.
 
 The Fargate task runs two containers:
-1. The main **PDS container**, using the
-[official PDS Docker image](https://github.com/bluesky-social/pds/pkgs/container/pds).
-The official image is hosted on GitHub's Container Registry, but it is pulled from an
-[Amazon ECR pull-through cache](https://docs.aws.amazon.com/AmazonECR/latest/userguide/pull-through-cache.html).
+1. The main **PDS container** uses the
+[official PDS image](https://github.com/bluesky-social/pds/pkgs/container/pds),
+copied into a private [Amazon ECR](https://aws.amazon.com/ecr/) repository.
 The PDS uses an [Amazon S3](https://aws.amazon.com/s3/) bucket for its blob store.
 It also uses [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/)
 to generate and store its admin password and JWT secret key,

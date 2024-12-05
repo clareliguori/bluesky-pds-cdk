@@ -3,7 +3,9 @@
 services:
   pds:
     container_name: pds
-    image: ghcr.io/bluesky-social/pds:0.4
+    build:
+      context: pds
+      dockerfile: Dockerfile
     network_mode: host
     depends_on:
       backup_sidecar:

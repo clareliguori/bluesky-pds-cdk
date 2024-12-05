@@ -150,26 +150,13 @@ class BlueskyPdsInfraStack extends Stack {
       dataBackupBucket.addToResourcePolicy(s3BucketPolicy);
     }
 
-    // ECR pull-through cache for the PDS image on GHCR
-    const githubSecret = secretsmanager.Secret.fromSecretNameV2(
-      this,
-      'GitHubToken',
-      'ecr-pullthroughcache/bluesky-pds-image-github-token'
-    );
-    new ecr.CfnPullThroughCacheRule(this, 'ContainerImagePullThroughCache', {
-      credentialArn: githubSecret.secretArn,
-      ecrRepositoryPrefix: 'github-bluesky',
-      upstreamRegistryUrl: 'ghcr.io',
+    // Docker images to build
+    const pdsImage = ecs.ContainerImage.fromAsset('./pds', {
+      platform: ecr_assets.Platform.LINUX_AMD64,
     });
-    const cacheRepo = new ecr.Repository(this, 'CacheRepo', {
-      repositoryName: 'github-bluesky/bluesky-social/pds',
-      removalPolicy:
-        props.mode === Mode.TEST
-          ? RemovalPolicy.DESTROY
-          : RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
-      emptyOnDelete: true,
+    const pdsBackupImage = ecs.ContainerImage.fromAsset('./pds-data-backup', {
+      platform: ecr_assets.Platform.LINUX_AMD64,
     });
-    const image = ecs.ContainerImage.fromEcrRepository(cacheRepo, '0.4');
 
     // Fargate service + load balancer to run PDS container image
     const service = new patterns.ApplicationLoadBalancedFargateService(
@@ -188,7 +175,7 @@ class BlueskyPdsInfraStack extends Stack {
         // PDS server configuration
         taskImageOptions: {
           containerName: 'pds',
-          image,
+          image: pdsImage,
           containerPort: 3000,
           logDriver: ecs.LogDriver.awsLogs({
             streamPrefix: 'PDSService',
@@ -255,9 +242,7 @@ class BlueskyPdsInfraStack extends Stack {
     // Add sidecar container that backs up and restores the PDS data to/from S3
     const sidecar = service.taskDefinition.addContainer('SyncContainer', {
       containerName: 's3_sync',
-      image: ecs.ContainerImage.fromAsset('./pds-data-backup', {
-        platform: ecr_assets.Platform.LINUX_AMD64,
-      }),
+      image: pdsBackupImage,
       logging: ecs.LogDriver.awsLogs({
         streamPrefix: 'PDSS3Sync',
         logGroup: new logs.LogGroup(this, 'PDSS3SyncLogGroup', {
