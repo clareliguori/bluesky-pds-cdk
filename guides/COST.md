@@ -15,25 +15,25 @@ See https://aws.amazon.com/free/.
 
 | Resource | Monthly Cost | Notes |
 |----------|--------------|-------|
-| Data Transfer from AWS to Internet | $0 | Free tier: 100 GB |
-| Route 53 Hosted Zone | $0.50 | |
-| ACM TLS Certificate | $0.00 | |
-| ECR Storage | $0.00 | Free tier: 50 GB |
-| VPC Public IPv4 Addresses (3) | $10.80 | $3.60 per address |
-| EC2 Application Load Balancer | $16.20 |  |
-| EC2 ALB Capacity Units | Unknown | 1 LCU = $5.76 |
 | Fargate vCPU Hours (1 vCPU) | $29.15 |  |
 | Fargate Memory Hours (2 GB) | $6.40 |  |
+| EC2 Application Load Balancer | $16.20 |  |
+| EC2 ALB Capacity Units | Unknown | 1 LCU = $5.76 |
+| VPC Public IPv4 Addresses (3) | $10.80 | $3.60 per address |
 | KMS Customer-Managed Keys (1) | $1.00 |  |
 | KMS Symmetric API Requests | $0.00 | Free tier: 20k requests |
 | KMS Asymmetric API Requests | $0.15 | $0.15 per 10,000 requests (GetPublicKey, Sign) |
 | Secrets Manager Secrets (3) | $1.20 | $0.40 per secret |
 | Secrets Manager API Requests | $0.05 | $0.05 per 10,000 API calls |
-| SNS API Requests | $0.00 | Free tier: 1 million requests |
-| SNS Notification Deliveries (HTTP) | $0.00 | Free tier: 100k notifications |
+| Route 53 Hosted Zone | $0.50 | |
+| Data Transfer from AWS to Internet | $0 | Free tier: 100 GB |
 | S3 Storage | Unknown | $0.023 per GB |
 | S3 API Put Requests | Unknown | $0.005 per 1,000 PUT, COPY, POST, LIST requests |
 | S3 API Get Requests | Unknown | $0.0004 per 1,000 GET, SELECT, and all other requests |
+| ACM TLS Certificate | $0.00 | |
+| ECR Storage | $0.00 | Free tier: 50 GB |
+| SNS API Requests | $0.00 | Free tier: 1 million requests |
+| SNS Notification Deliveries (HTTP) | $0.00 | Free tier: 100k notifications |
 | CloudWatch Logs Storage | $0.00 | Free tier: 5 GB |
 | CloudWatch Logs Ingestion | $0.00 | Free tier: 5 GB |
 | CloudWatch Alarms (4) | $0.00 | Free tier: 10 alarms |
@@ -88,18 +88,18 @@ This is a rough sketch of how the costs would change:
 | Resource | Monthly Cost | Notes |
 |----------|--------------|-------|
 | Lightsail Containers Medium | $40 | |
-| Data Transfer from AWS to Internet | $0 | Free tier: 500 GB |
-| ECR Storage | $0.00 | Free tier: 50 GB |
 | KMS Customer-Managed Keys (1) | $1.00 |  |
 | KMS Symmetric API Requests | $0.00 | Free tier: 20k requests |
 | KMS Asymmetric API Requests | $0.15 | $0.15 per 10,000 requests (GetPublicKey, Sign) |
 | Secrets Manager Secrets (3) | $1.20 | $0.40 per secret |
 | Secrets Manager API Requests | $0.05 | $0.05 per 10,000 API calls |
-| SNS API Requests | $0.00 | Free tier: 1 million requests |
-| SNS Notification Deliveries (HTTP) | $0.00 | Free tier: 100k notifications |
+| Data Transfer from AWS to Internet | $0 | Free tier: 500 GB |
 | S3 Storage | Unknown | $0.023 per GB |
 | S3 API Put Requests | Unknown | $0.005 per 1,000 PUT, COPY, POST, LIST requests |
 | S3 API Get Requests | Unknown | $0.0004 per 1,000 GET, SELECT, and all other requests |
+| ECR Storage | $0.00 | Free tier: 50 GB |
+| SNS API Requests | $0.00 | Free tier: 1 million requests |
+| SNS Notification Deliveries (HTTP) | $0.00 | Free tier: 100k notifications |
 | CloudWatch Logs Storage | $0.00 | Free tier: 5 GB |
 | CloudWatch Logs Ingestion | $0.00 | Free tier: 5 GB |
 | CloudWatch Alarms (4) | $0.00 | Free tier: 10 alarms |
