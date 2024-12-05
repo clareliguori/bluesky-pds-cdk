@@ -2,6 +2,7 @@
 import {
   App,
   ArnFormat,
+  CfnOutput,
   Duration,
   RemovalPolicy,
   Stack,
@@ -69,6 +70,11 @@ class BlueskyPdsInfraStack extends Stack {
       generateSecretString: {
         passwordLength: 16,
       },
+    });
+    new CfnOutput(this, 'AdminPasswordOutput', {
+      value: adminPassword.secretArn,
+      description: 'ARN of the admin password secret',
+      exportName: 'AdminPasswordID',
     });
     const jwtSecret = new secretsmanager.Secret(this, 'JwtSecret', {
       generateSecretString: {
