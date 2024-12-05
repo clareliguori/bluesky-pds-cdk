@@ -23,13 +23,14 @@ See https://aws.amazon.com/free/.
 | KMS Customer-Managed Keys (1) | $1.00 |  |
 | KMS Symmetric API Requests | $0.00 | Free tier: 20k requests |
 | KMS Asymmetric API Requests | $0.15 | $0.15 per 10,000 requests (GetPublicKey, Sign) |
-| Secrets Manager Secrets (2) | $0.80 | $0.40 per secret |
+| Secrets Manager Secrets (3) | $1.20 | $0.40 per secret |
 | Secrets Manager API Requests | $0.05 | $0.05 per 10,000 API calls |
 | Route 53 Hosted Zone | $0.50 | |
 | Data Transfer from AWS to Internet | $0 | Free tier: 100 GB |
 | S3 Storage | Unknown | $0.023 per GB |
 | S3 API Put Requests | Unknown | $0.005 per 1,000 PUT, COPY, POST, LIST requests |
 | S3 API Get Requests | Unknown | $0.0004 per 1,000 GET, SELECT, and all other requests |
+| SES Outbound Email | <$0.01 | $0.10/1000 emails |
 | ACM TLS Certificate | $0.00 | |
 | ECR Storage | $0.00 | Free tier: 50 GB |
 | SNS API Requests | $0.00 | Free tier: 1 million requests |
@@ -38,7 +39,7 @@ See https://aws.amazon.com/free/.
 | CloudWatch Logs Ingestion | $0.00 | Free tier: 5 GB |
 | CloudWatch Alarms (4) | $0.00 | Free tier: 10 alarms |
 
-**Known costs: $65.05 per month**
+**Known costs: $65.45 per month**
 
 Unknown, variable costs:
 * EC2 ALB Capacity Units: assume max 1 LCU ($5.76 / month)
@@ -91,12 +92,13 @@ This is a rough sketch of how the costs would change:
 | KMS Customer-Managed Keys (1) | $1.00 |  |
 | KMS Symmetric API Requests | $0.00 | Free tier: 20k requests |
 | KMS Asymmetric API Requests | $0.15 | $0.15 per 10,000 requests (GetPublicKey, Sign) |
-| Secrets Manager Secrets (2) | $0.80 | $0.40 per secret |
+| Secrets Manager Secrets (3) | $1.20 | $0.40 per secret |
 | Secrets Manager API Requests | $0.05 | $0.05 per 10,000 API calls |
 | Data Transfer from AWS to Internet | $0 | Free tier: 500 GB |
 | S3 Storage | Unknown | $0.023 per GB |
 | S3 API Put Requests | Unknown | $0.005 per 1,000 PUT, COPY, POST, LIST requests |
 | S3 API Get Requests | Unknown | $0.0004 per 1,000 GET, SELECT, and all other requests |
+| SES Outbound Email | <$0.01 | $0.10/1000 emails |
 | ECR Storage | $0.00 | Free tier: 50 GB |
 | SNS API Requests | $0.00 | Free tier: 1 million requests |
 | SNS Notification Deliveries (HTTP) | $0.00 | Free tier: 100k notifications |
@@ -104,7 +106,7 @@ This is a rough sketch of how the costs would change:
 | CloudWatch Logs Ingestion | $0.00 | Free tier: 5 GB |
 | CloudWatch Alarms (4) | $0.00 | Free tier: 10 alarms |
 
-The **known costs become $42.00 per month**.
+The **known costs become $42.40 per month**.
 
 The only variable costs compared to above are S3 (assumed to be $0.32).
 Lightsail does offer Object storage bundled pricing for S3 buckets created
@@ -114,7 +116,7 @@ expect typical S3 use to be lower than that.
 For the example above of a popular image impacting data transfer costs,
 it would cost an additional $83.75 for an overage of 930.50 GB.
 
-While this option is significantly cheaper (~$43 vs ~$71),
+While this option is significantly cheaper (~$43 vs ~$72),
 there are some blockers for running a PDS and some drawbacks for a production system:
 * Cannot exec commands within a container or SSH to a container, required for running
 the pdsadmin tool.

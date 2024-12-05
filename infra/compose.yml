@@ -42,6 +42,10 @@ services:
       PDS_ADMIN_PASSWORD: "${PDS_ADMIN_PASSWORD}"
       PDS_JWT_SECRET: "${PDS_JWT_SECRET}"
       LOG_ENABLED: true
+      PDS_EMAIL_FROM_ADDRESS: 'hello@example.com'
+      SMTP_HOST: 'localhost'
+      SMTP_MAIL_USERNAME: 'fake'
+      SMTP_MAIL_PASSWORD: 'fa//ke'
 
   backup_sidecar:
     container_name: s3_sync

@@ -1,6 +1,6 @@
 # bluesky-pds-cdk
 
-This repository contains an AWS CDK template for self-hosting a
+This repository contains an AWS CDK template for self-hosting a fully containerized, serverless
 [Bluesky Personal Data Server (PDS)](https://atproto.com/guides/self-hosting) on AWS.
 
 ## Architecture

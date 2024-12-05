@@ -73,6 +73,14 @@ WebSockets should also work:
 wsdump "wss://example.com/xrpc/com.atproto.sync.subscribeRepos?cursor=0"
 ```
 
+And the pdsadmin command should work:
+
+```
+./ops/pdsadmin.sh account list
+```
+NOTE: This template requires the customized version of pdsadmin found in this repository.
+The pdsadmin script from the main [Bluesky PDS repository](https://github.com/bluesky-social/pds) will not work.
+
 ## Keep track of costs
 
 A 'project' tag is attached to every resource created by this template,

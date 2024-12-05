@@ -25,7 +25,7 @@ import {
   aws_ses as ses,
   aws_sns as sns,
 } from 'aws-cdk-lib';
-import { ApplicationProtocol } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { SesSmtpCredentials } from '@pepperize/cdk-ses-smtp-credentials';
 
 enum Mode {
   PROD = 'Production',
@@ -112,11 +112,6 @@ class BlueskyPdsInfraStack extends Stack {
       enforceSSL: true,
     });
 
-    new ses.EmailIdentity(this, 'EmailIdentity', {
-      identity: ses.Identity.publicHostedZone(domainZone),
-      mailFromDomain: 'mail.' + props.domainZone,
-    });
-
     // Control access to the buckets
     const s3Endpoint = vpc.addGatewayEndpoint('S3Endpoint', {
       service: ec2.GatewayVpcEndpointAwsService.S3,
@@ -160,6 +155,19 @@ class BlueskyPdsInfraStack extends Stack {
       dataBackupBucket.addToResourcePolicy(s3BucketPolicy);
     }
 
+    const emailIdentity = new ses.EmailIdentity(this, 'EmailIdentity', {
+      identity: ses.Identity.publicHostedZone(domainZone),
+      mailFromDomain: 'mail.' + props.domainZone,
+    });
+    // SES does not support generating SMTP credentials from temporary credentials,
+    // only long-term credentials.
+    // TODO figure out how to regularly rotate this IAM user
+    const emailUser = new iam.User(this, 'SesUser', {});
+    emailIdentity.grantSendEmail(emailUser);
+    const smtpCredentials = new SesSmtpCredentials(this, 'SmtpCredentials', {
+      user: emailUser,
+    });
+
     // Docker images to build
     const pdsImage = ecs.ContainerImage.fromAsset('./pds', {
       platform: ecr_assets.Platform.LINUX_AMD64,
@@ -178,7 +186,7 @@ class BlueskyPdsInfraStack extends Stack {
         desiredCount: 1,
         domainName: props.domainName,
         domainZone,
-        protocol: ApplicationProtocol.HTTPS,
+        protocol: elb.ApplicationProtocol.HTTPS,
         redirectHTTP: true,
         assignPublicIp: true,
         propagateTags: ecs.PropagatedTagSource.SERVICE,
@@ -198,7 +206,6 @@ class BlueskyPdsInfraStack extends Stack {
             }),
           }),
           environment: {
-            // TODO OAuth config
             PDS_HOSTNAME: props.domainName,
             PDS_PORT: '3000',
             PDS_DATA_DIRECTORY: '/pds',
@@ -209,6 +216,7 @@ class BlueskyPdsInfraStack extends Stack {
             PDS_BLOBSTORE_S3_REGION: this.region,
             PDS_BLOBSTORE_DISK_LOCATION: '',
             PDS_BLOB_UPLOAD_LIMIT: '52428800',
+            PDS_EMAIL_FROM_ADDRESS: `admin@mail.${props.domainZone}`,
             PDS_DID_PLC_URL: 'https://plc.directory',
             PDS_BSKY_APP_VIEW_URL: 'https://api.bsky.app',
             PDS_BSKY_APP_VIEW_DID: 'did:web:api.bsky.app',
@@ -217,10 +225,19 @@ class BlueskyPdsInfraStack extends Stack {
             PDS_CRAWLERS: 'https://bsky.network',
             PDS_SERVICE_HANDLE_DOMAINS: '.' + props.rootDomain,
             LOG_ENABLED: 'true',
+            SMTP_HOST: `email-smtp.${this.region}.amazonaws.com`,
           },
           secrets: {
             PDS_ADMIN_PASSWORD: ecs.Secret.fromSecretsManager(adminPassword),
             PDS_JWT_SECRET: ecs.Secret.fromSecretsManager(jwtSecret),
+            SMTP_MAIL_USERNAME: ecs.Secret.fromSecretsManager(
+              smtpCredentials.secret,
+              'username'
+            ),
+            SMTP_MAIL_PASSWORD: ecs.Secret.fromSecretsManager(
+              smtpCredentials.secret,
+              'password'
+            ),
           },
         },
         healthCheck: {
@@ -244,10 +261,16 @@ class BlueskyPdsInfraStack extends Stack {
         enableExecuteCommand: true,
       }
     );
+    service.service.node.addDependency(emailIdentity);
+    service.service.node.addDependency(smtpCredentials);
 
     service.targetGroup.configureHealthCheck({
       path: '/xrpc/_health',
     });
+    service.targetGroup.setAttribute(
+      'deregistration_delay.timeout_seconds',
+      '30'
+    );
 
     // Add sidecar container that backs up and restores the PDS data to/from S3
     const sidecar = service.taskDefinition.addContainer('SyncContainer', {
