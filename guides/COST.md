@@ -50,6 +50,33 @@ For example, if a post with a 300 KB image becomes very popular and is loaded 5M
 that would cost an additional **$119.75** in data transfer charges
 for an overage of 1330.5 GB.
 
+### CI/CD pipeline costs
+
+As long as your CI/CD pipeline runs relatively infrequently (a couple times a week?),
+your costs will be negligible.
+
+| Resource | Monthly Cost | Notes |
+|----------|--------------|-------|
+| CodePipeline Pipeline | $0 | Free tier: 1 pipeline |
+| CodeBuild Build Minutes (Linux:g1.small) | $0 | Free tier: 100.0 minutes |
+| S3 Storage | Unknown | $0.023 per GB |
+| S3 API Put Requests | Unknown | $0.005 per 1,000 PUT, COPY, POST, LIST requests |
+| S3 API Get Requests | Unknown | $0.0004 per 1,000 GET, SELECT, and all other requests |
+
+### AWS CDK costs
+
+The AWS CDK creates some resources that will show up on your AWS bill.
+For example, it may create and invoke Lambda functions for any custom
+CloudFormation resources used by the template.
+However, these should all fall under the free tier.
+
+| Resource | Monthly Cost | Notes |
+|----------|--------------|-------|
+| CloudFormation Handler Operations | $0.00 | Free tier: 1k operations |
+| Lambda Requests | $0.00 | Free tier: 1 million requests |
+| Lambda Invocations (GB Seconds) | $ 0.00 | Free tier: 400k seconds |
+| Systems Manager Parameter | $0.00 | |
+
 ### Comparison to Lightsail Containers
 
 The Lightsail Containers "Medium" plan is the minimum needed to run a PDS,
@@ -87,29 +114,15 @@ expect typical S3 use to be lower than that.
 For the example above of a popular image impacting data transfer costs,
 it would cost an additional $83.75 for an overage of 930.50 GB.
 
-### CI/CD pipeline costs
-
-As long as your CI/CD pipeline runs relatively infrequently (a couple times a week?),
-your costs will be negligible.
-
-| Resource | Monthly Cost | Notes |
-|----------|--------------|-------|
-| CodePipeline Pipeline | $0 | Free tier: 1 pipeline |
-| CodeBuild Build Minutes (Linux:g1.small) | $0 | Free tier: 100.0 minutes |
-| S3 Storage | Unknown | $0.023 per GB |
-| S3 API Put Requests | Unknown | $0.005 per 1,000 PUT, COPY, POST, LIST requests |
-| S3 API Get Requests | Unknown | $0.0004 per 1,000 GET, SELECT, and all other requests |
-
-### AWS CDK costs
-
-The AWS CDK creates some resources that will show up on your AWS bill.
-For example, it may create and invoke Lambda functions for any custom
-CloudFormation resources used by the template.
-However, these should all fall under the free tier.
-
-| Resource | Monthly Cost | Notes |
-|----------|--------------|-------|
-| CloudFormation Handler Operations | $0.00 | Free tier: 1k operations |
-| Lambda Requests | $0.00 | Free tier: 1 million requests |
-| Lambda Invocations (GB Seconds) | $ 0.00 | Free tier: 400k seconds |
-| Systems Manager Parameter | $0.00 | |
+While this option is significantly cheaper (~$43 vs ~$72),
+there are some drawbacks for a production system:
+* Volume mounts are not supported, so the Litestream continuous replication must run
+in the same container as the PDS (an anti-pattern in containers).
+* Short-lived credentials from an IAM role are not supported for accessing other AWS services,
+such as KMS for the PDS PLC rotation key.
+Many Lightsail customers who need to access non-Lightsail services from their Lightsail
+container bake long-term AWS credentials into their Docker image (an anti-pattern for security).
+* Secret environment variables such as the PDS admin password are not supported.
+Secret values must be provided to Lightsail in plaintext (an anti-pattern for security).
+* Monitoring is limited: Alarms and notifications are currently not
+supported for Lightsail container service metrics.

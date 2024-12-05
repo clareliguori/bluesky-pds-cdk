@@ -24,7 +24,7 @@ flowchart LR
   S3 bucket")
 ```
 
-This architecture was designed with resiliency in mind.
+This architecture was designed with resiliency and security in mind.
 A single [AWS Fargate](https://aws.amazon.com/fargate/) task sits behind a load balancer
 that spans two AZs, running in its own VPC.
 The load balancer terminates TLS, and redirects HTTP to HTTPS.
@@ -44,7 +44,7 @@ and [AWS KMS](https://aws.amazon.com/kms/) for its PLC rotation key.
 2. A **sidecar container** that uses [Litestream](https://litestream.io/)
 to continuously replicate the PDS on-disk SQLite databases to S3.
 On task launch, the sidecar starts before the PDS and restores the database files
-from S3 to the local disk.
+from S3 to the local disk (a shared volume with the PDS container).
 
 For monitoring, container logs are sent to [Amazon CloudWatch](https://aws.amazon.com/cloudwatch/).
 Alarms are configured in CloudWatch on load balancer metrics.
