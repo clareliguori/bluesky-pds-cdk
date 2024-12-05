@@ -71,10 +71,9 @@ class BlueskyPdsInfraStack extends Stack {
         passwordLength: 16,
       },
     });
-    new CfnOutput(this, 'AdminPasswordOutput', {
+    new CfnOutput(this, 'AdminPasswordID', {
       value: adminPassword.secretArn,
       description: 'ARN of the admin password secret',
-      exportName: 'AdminPasswordID',
     });
     const jwtSecret = new secretsmanager.Secret(this, 'JwtSecret', {
       generateSecretString: {
