@@ -11,7 +11,6 @@ import {
   aws_cloudwatch as cloudwatch,
   aws_cloudwatch_actions as cw_actions,
   aws_ec2 as ec2,
-  aws_ecr as ecr,
   aws_ecr_assets as ecr_assets,
   aws_ecs as ecs,
   aws_ecs_patterns as patterns,
@@ -286,14 +285,6 @@ class BlueskyPdsInfraStack extends Stack {
       container: sidecar,
       condition: ecs.ContainerDependencyCondition.HEALTHY,
     });
-
-    // Grant ECR pull-through cache permissions
-    service.service.taskDefinition.addToExecutionRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['ecr:BatchImportUpstreamImage'],
-        resources: [cacheRepo.repositoryArn],
-      })
-    );
 
     // Permissions needed by containers
     dataBackupBucket.grantReadWrite(service.service.taskDefinition.taskRole);
