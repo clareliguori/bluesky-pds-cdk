@@ -180,7 +180,7 @@ class BlueskyPdsInfraStack extends Stack {
           logDriver: ecs.LogDriver.awsLogs({
             streamPrefix: 'PDSService',
             logGroup: new logs.LogGroup(this, 'ServiceLogGroup', {
-              retention: logs.RetentionDays.ONE_MONTH,
+              retention: logs.RetentionDays.ONE_WEEK,
               removalPolicy:
                 props.mode === Mode.TEST
                   ? RemovalPolicy.DESTROY
@@ -246,7 +246,7 @@ class BlueskyPdsInfraStack extends Stack {
       logging: ecs.LogDriver.awsLogs({
         streamPrefix: 'PDSS3Sync',
         logGroup: new logs.LogGroup(this, 'PDSS3SyncLogGroup', {
-          retention: logs.RetentionDays.ONE_MONTH,
+          retention: logs.RetentionDays.ONE_WEEK,
           removalPolicy:
             props.mode === Mode.TEST
               ? RemovalPolicy.DESTROY
