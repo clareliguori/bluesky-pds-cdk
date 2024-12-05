@@ -185,7 +185,7 @@ const app = new App();
 new BlueskyPdsPipelineStack(app, 'BlueskyPdsPipeline', {
   env: { account: process.env['CDK_DEFAULT_ACCOUNT'], region: 'us-east-2' },
   tags: {
-    project: 'bluesky-pds',
+    project: 'bluesky-pds-pipeline',
   },
 });
 app.synth();

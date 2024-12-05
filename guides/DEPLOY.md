@@ -42,7 +42,7 @@ aws secretsmanager create-secret \
 
 ## Create an SNS topic
 
-Create an SNS topic for notifications about alarms and pipeline execution failures (configured later on).
+Create an SNS topic for notifications about alarms.
 
 ```bash
 aws sns create-topic \
@@ -91,7 +91,18 @@ WebSockets should also work:
 wsdump "wss://example.com/xrpc/com.atproto.sync.subscribeRepos?cursor=0"
 ```
 
-# Deploy a CI/CD pipeline (optional)
+## Keep track of costs
+
+A 'project' tag is attached to every resource created by this template,
+with the value 'bluesky-pds' ('bluesky-pds-pipeline' for the CI/CD pipeline resources).
+Activate the project tag in the Billing console to keep track of costs
+incurred by your self-hosted PDS.
+
+On the Billing console, select "project" in the table and click "Activate".
+
+https://us-east-1.console.aws.amazon.com/costmanagement/home?region=us-east-1#/tags
+
+## Deploy a CI/CD pipeline (optional)
 
 The CI/CD pipeline can automatically deploy changes to your PDS from your repository on GitHub.
 

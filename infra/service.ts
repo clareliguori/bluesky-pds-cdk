@@ -320,6 +320,7 @@ class BlueskyPdsInfraStack extends Stack {
     );
 
     // Alarms
+    // TODO: alarm on errors in logs
     const topic = sns.Topic.fromTopicArn(
       this,
       'AlarmTopic',
