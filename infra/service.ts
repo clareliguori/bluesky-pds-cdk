@@ -22,6 +22,7 @@ import {
   aws_route53 as route53,
   aws_s3 as s3,
   aws_secretsmanager as secretsmanager,
+  aws_ses as ses,
   aws_sns as sns,
 } from 'aws-cdk-lib';
 import { ApplicationProtocol } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
@@ -109,6 +110,11 @@ class BlueskyPdsInfraStack extends Stack {
       autoDeleteObjects: props.mode === Mode.TEST,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
+    });
+
+    new ses.EmailIdentity(this, 'EmailIdentity', {
+      identity: ses.Identity.publicHostedZone(domainZone),
+      mailFromDomain: 'mail.' + props.domainZone,
     });
 
     // Control access to the buckets
