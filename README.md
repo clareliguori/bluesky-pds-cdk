@@ -40,6 +40,7 @@ The PDS uses an [Amazon S3](https://aws.amazon.com/s3/) bucket for its blob stor
 It also uses [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/)
 to generate and store its admin password and JWT secret key,
 and [AWS KMS](https://aws.amazon.com/kms/) for its PLC rotation key.
+[Amazon SES](https://aws.amazon.com/ses/) is used to send emails from the PDS.
 2. A **sidecar container** that uses [Litestream](https://litestream.io/)
 to continuously replicate the PDS on-disk SQLite databases to S3.
 On task launch, the sidecar starts before the PDS and restores the database files
