@@ -24,7 +24,7 @@ flowchart LR
   S3 bucket")
 ```
 
-This architecture was designed with resiliency and security in mind.
+This architecture was designed with resiliency, observability, and security in mind.
 A single [AWS Fargate](https://aws.amazon.com/fargate/) task sits behind a load balancer
 that spans two AZs, running in its own VPC.
 The load balancer terminates TLS, and redirects HTTP to HTTPS.
@@ -52,3 +52,6 @@ Alarms are configured in CloudWatch on load balancer metrics.
 ## Deploy your PDS
 
 See the [deployment guide](guides/DEPLOY.md) for instructions on how to deploy a Bluesky PDS using this CDK template.
+
+Also see the [cost guide](guides/COST.md) to get a rough idea on the cost for self-hosting a PDS using this CDK template,
+as well as other options for self-hosting on AWS.
