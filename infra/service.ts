@@ -37,7 +37,6 @@ enum Mode {
 interface BlueskyPdsInfraStackProps extends StackProps {
   domainName: string;
   domainZone: string;
-  rootDomain: string;
   mode: Mode;
 }
 
@@ -237,7 +236,7 @@ class BlueskyPdsInfraStack extends Stack {
             PDS_REPORT_SERVICE_URL: 'https://mod.bsky.app',
             PDS_REPORT_SERVICE_DID: 'did:plc:ar7c4by46qjdydhdevvrndac',
             PDS_CRAWLERS: 'https://bsky.network',
-            PDS_SERVICE_HANDLE_DOMAINS: '.' + props.rootDomain,
+            PDS_SERVICE_HANDLE_DOMAINS: `.${props.domainName}`,
             LOG_ENABLED: 'true',
             SMTP_HOST: `email-smtp.${this.region}.amazonaws.com`,
           },
@@ -440,6 +439,8 @@ class BlueskyPdsInfraStack extends Stack {
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
     logErrorsAlarm.addAlarmAction(new cw_actions.SnsAction(topic));
+
+    // TODO custom dashboard
   }
 }
 
@@ -448,7 +449,6 @@ new BlueskyPdsInfraStack(app, 'BlueskyPdsInfra', {
   mode: Mode.TEST,
   domainName: 'pds.clare.dev',
   domainZone: 'pds.clare.dev',
-  rootDomain: 'clare.dev',
   env: { account: process.env['CDK_DEFAULT_ACCOUNT'], region: 'us-east-2' },
   tags: {
     project: 'bluesky-pds',
