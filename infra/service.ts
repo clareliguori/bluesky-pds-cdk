@@ -9,6 +9,7 @@ import {
   StackProps,
 } from 'aws-cdk-lib';
 import {
+  aws_certificatemanager as acm,
   aws_cloudwatch as cloudwatch,
   aws_cloudwatch_actions as cw_actions,
   aws_ec2 as ec2,
@@ -20,6 +21,7 @@ import {
   aws_kms as kms,
   aws_logs as logs,
   aws_route53 as route53,
+  aws_route53_targets as route53_targets,
   aws_s3 as s3,
   aws_secretsmanager as secretsmanager,
   aws_ses as ses,
@@ -43,11 +45,6 @@ class BlueskyPdsInfraStack extends Stack {
   constructor(parent: App, name: string, props: BlueskyPdsInfraStackProps) {
     super(parent, name, props);
 
-    // TODO add a 'production' mode for the template
-    // that removes all the 'DESTROY' removal policies,
-    // so that a production stack doesn't lose data
-    // It's nice for testing to wipe everything clean.
-
     // Network infrastructure
     const vpc = new ec2.Vpc(this, 'Vpc', {
       maxAzs: 2,
@@ -64,6 +61,12 @@ class BlueskyPdsInfraStack extends Stack {
     });
     const domainZone = route53.HostedZone.fromLookup(this, 'Zone', {
       domainName: props.domainZone,
+    });
+
+    const certificate = new acm.Certificate(this, 'Certificate', {
+      domainName: props.domainName,
+      subjectAlternativeNames: [`*.${props.domainName}`],
+      validation: acm.CertificateValidation.fromDns(domainZone),
     });
 
     // Resources for the PDS application
@@ -186,6 +189,7 @@ class BlueskyPdsInfraStack extends Stack {
         desiredCount: 1,
         domainName: props.domainName,
         domainZone,
+        certificate,
         protocol: elb.ApplicationProtocol.HTTPS,
         redirectHTTP: true,
         assignPublicIp: true,
@@ -263,6 +267,17 @@ class BlueskyPdsInfraStack extends Stack {
     );
     service.service.node.addDependency(emailIdentity);
     service.service.node.addDependency(smtpCredentials);
+
+    // PDS will verify users at endpoints like:
+    // https://<userhandle>.pds.example.com/.well-known/atproto-did
+    // This wildcard record will route *.pds.example.com to the ALB
+    new route53.ARecord(this, 'DNS', {
+      zone: domainZone,
+      recordName: `*.${props.domainName}`,
+      target: route53.RecordTarget.fromAlias(
+        new route53_targets.LoadBalancerTarget(service.loadBalancer)
+      ),
+    });
 
     service.targetGroup.configureHealthCheck({
       path: '/xrpc/_health',
