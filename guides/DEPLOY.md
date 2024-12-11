@@ -63,23 +63,25 @@ cdk deploy --profile default --app 'node service.js'
 
 Your PDS should now be accessible:
 
-```
+```bash
 curl https://example.com/xrpc/_health
 ```
 
 WebSockets should also work:
 
-```
+```bash
 wsdump "wss://example.com/xrpc/com.atproto.sync.subscribeRepos?cursor=0"
 ```
 
 And the pdsadmin command should work:
 
-```
+```bash
 ./ops/pdsadmin.sh account list
 ```
 NOTE: This template requires the customized version of pdsadmin found in this repository.
 The pdsadmin script from the main [Bluesky PDS repository](https://github.com/bluesky-social/pds) will not work.
+
+You can now create an account on your PDS (see [OPERATIONS.md](OPERATIONS.md) for instructions).
 
 ## Keep track of costs
 

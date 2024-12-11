@@ -55,3 +55,8 @@ See the [deployment guide](guides/DEPLOY.md) for instructions on how to deploy a
 
 Also see the [cost guide](guides/COST.md) to get a rough idea on the cost for self-hosting a PDS using this CDK template,
 as well as other options for self-hosting on AWS.
+
+Note that Bluesky currently treats federating to self-hosted PDSs as an experimental phase,
+and is intended for developers and individuals hosting personal or test accounts.
+Bluesky recommends that you do not migrate your main account yet.
+See the [AT Protocol PDS Admins Discord](https://discord.gg/e7hpHxRfBP) for the latest guidance.
