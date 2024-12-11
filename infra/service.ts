@@ -179,6 +179,22 @@ class BlueskyPdsInfraStack extends Stack {
       platform: ecr_assets.Platform.LINUX_AMD64,
     });
 
+    // Logging
+    const pdsLogGroup = new logs.LogGroup(this, 'ServiceLogGroup', {
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy:
+        props.mode === Mode.TEST
+          ? RemovalPolicy.DESTROY
+          : RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+    });
+    const syncLogGroup = new logs.LogGroup(this, 'PDSS3SyncLogGroup', {
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy:
+        props.mode === Mode.TEST
+          ? RemovalPolicy.DESTROY
+          : RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+    });
+
     // Fargate service + load balancer to run PDS container image
     const service = new patterns.ApplicationLoadBalancedFargateService(
       this,
@@ -201,13 +217,7 @@ class BlueskyPdsInfraStack extends Stack {
           containerPort: 3000,
           logDriver: ecs.LogDriver.awsLogs({
             streamPrefix: 'PDSService',
-            logGroup: new logs.LogGroup(this, 'ServiceLogGroup', {
-              retention: logs.RetentionDays.ONE_WEEK,
-              removalPolicy:
-                props.mode === Mode.TEST
-                  ? RemovalPolicy.DESTROY
-                  : RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
-            }),
+            logGroup: pdsLogGroup,
           }),
           environment: {
             PDS_HOSTNAME: props.domainName,
@@ -293,13 +303,7 @@ class BlueskyPdsInfraStack extends Stack {
       image: pdsBackupImage,
       logging: ecs.LogDriver.awsLogs({
         streamPrefix: 'PDSS3Sync',
-        logGroup: new logs.LogGroup(this, 'PDSS3SyncLogGroup', {
-          retention: logs.RetentionDays.ONE_WEEK,
-          removalPolicy:
-            props.mode === Mode.TEST
-              ? RemovalPolicy.DESTROY
-              : RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
-        }),
+        logGroup: syncLogGroup,
       }),
       environment: {
         AWS_REGION: this.region,
@@ -345,7 +349,6 @@ class BlueskyPdsInfraStack extends Stack {
     );
 
     // Alarms
-    // TODO: alarm on errors in logs
     const topic = sns.Topic.fromTopicArn(
       this,
       'AlarmTopic',
@@ -385,6 +388,9 @@ class BlueskyPdsInfraStack extends Stack {
       }
     );
     noHostsAlarm.addAlarmAction(new cw_actions.SnsAction(topic));
+    // On stack creation, don't create the alarm until the service has been deployed at least once.
+    // This prevents noisy alarms during the first deployment
+    noHostsAlarm.node.addDependency(service.service);
 
     const tooManyHostsAlarm = new cloudwatch.Alarm(
       this,
@@ -414,6 +420,26 @@ class BlueskyPdsInfraStack extends Stack {
       evaluationPeriods: 1,
     });
     faultAlarm.addAlarmAction(new cw_actions.SnsAction(topic));
+
+    const errorLogsMetricFilter = pdsLogGroup.addMetricFilter(
+      'LogErrorFilter',
+      {
+        filterPattern: logs.FilterPattern.literal('{ $.err.type = "*" }'),
+        metricName: 'PDSLogErrors',
+        metricNamespace: props.domainName.replace(/\./g, '-'),
+      }
+    );
+    const logErrorsAlarm = new cloudwatch.Alarm(this, 'LogErrors', {
+      alarmName: this.stackName + '-Log-Errors',
+      alarmDescription: 'Errors found in the logs',
+      metric: errorLogsMetricFilter.metric(),
+      comparisonOperator:
+        cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      threshold: 1,
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+    logErrorsAlarm.addAlarmAction(new cw_actions.SnsAction(topic));
   }
 }
 

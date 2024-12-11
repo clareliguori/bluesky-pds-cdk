@@ -49,6 +49,8 @@ See https://aws.amazon.com/free/.
 | SNS Notification Deliveries (HTTP) | $0.00 | Free tier: 100k notifications |
 | CloudWatch Logs Storage | $0.00 | Free tier: 5 GB |
 | CloudWatch Logs Ingestion | $0.00 | Free tier: 5 GB |
+| CloudWatch Custom Metrics (1) | $0.00 | Free tier: 10 metrics |
+| CloudWatch API Requests | $0.00 | Free tier: 1 million requests |
 | CloudWatch Alarms (4) | $0.00 | Free tier: 10 alarms |
 
 **Known costs: $65.45 per month**
@@ -112,11 +114,6 @@ This is a rough sketch of how the costs would change:
 | S3 API Get Requests | Variable | $0.0004 per 1,000 GET, SELECT, and all other requests |
 | SES Outbound Email | <$0.01 | $0.10/1000 emails |
 | ECR Storage | $0.00 | Free tier: 50 GB |
-| SNS API Requests | $0.00 | Free tier: 1 million requests |
-| SNS Notification Deliveries (HTTP) | $0.00 | Free tier: 100k notifications |
-| CloudWatch Logs Storage | $0.00 | Free tier: 5 GB |
-| CloudWatch Logs Ingestion | $0.00 | Free tier: 5 GB |
-| CloudWatch Alarms (4) | $0.00 | Free tier: 10 alarms |
 
 The **known costs become $42.40 per month**.
 
