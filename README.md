@@ -1,4 +1,4 @@
-# bluesky-pds-cdk
+# AWS CDK template for Bluesky PDS
 
 This repository contains an AWS CDK template for self-hosting a fully containerized, serverless
 [Bluesky Personal Data Server (PDS)](https://atproto.com/guides/self-hosting) on AWS.
@@ -42,7 +42,7 @@ to generate and store its admin password and JWT secret key,
 and [AWS KMS](https://aws.amazon.com/kms/) for its PLC rotation key.
 [Amazon SES](https://aws.amazon.com/ses/) is used to send emails from the PDS.
 2. A **sidecar container** that uses [Litestream](https://litestream.io/)
-to continuously replicate the PDS on-disk SQLite databases to S3.
+to continuously replicate the main PDS on-disk SQLite databases to S3.
 On task launch, the sidecar starts before the PDS and restores the database files
 from S3 to the local disk (a shared volume with the PDS container).
 

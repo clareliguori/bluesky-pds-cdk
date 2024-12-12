@@ -13,7 +13,12 @@ updates:
     interval: weekly
 
 - package-ecosystem: docker
-  directory: "/infra/pds-data-backup"
+  directory: "/infra/pds-litestream"
+  schedule:
+    interval: weekly
+
+- package-ecosystem: docker
+  directory: "/infra/pds-s3-file-sync"
   schedule:
     interval: weekly
 

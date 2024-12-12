@@ -16,7 +16,8 @@ jobs:
       run: |
         cd infra
         docker build pds/
-        docker build pds-data-backup/
+        docker build pds-litestream/
+        docker build pds-s3-file-sync/
 
   infra:
     name: Infra CDK Build

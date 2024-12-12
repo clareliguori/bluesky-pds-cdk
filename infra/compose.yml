@@ -8,7 +8,9 @@ services:
       dockerfile: Dockerfile
     network_mode: host
     depends_on:
-      backup_sidecar:
+      db_backup_sidecar:
+        condition: service_healthy
+      file_backup_sidecar:
         condition: service_healthy
     volumes:
       - pds-data:/pds
@@ -47,11 +49,11 @@ services:
       SMTP_MAIL_USERNAME: 'fake'
       SMTP_MAIL_PASSWORD: 'fa//ke'
 
-  backup_sidecar:
-    container_name: s3_sync
-    image: s3_sync
+  db_backup_sidecar:
+    container_name: litestream
+    image: litestream
     build:
-      context: pds-data-backup
+      context: pds-litestream
       dockerfile: Dockerfile
     network_mode: host
     volumes:
@@ -69,8 +71,36 @@ services:
     environment:
       AWS_REGION: 'us-east-2'
       AWS_DEFAULT_REGION: 'us-east-2'
-      S3_PATH: "s3://${PDS_BACKUP_S3_BUCKET}/pds-backup"
+      S3_PATH: "s3://${PDS_BACKUP_S3_BUCKET}/litestream-replication"
       LOCAL_PATH: '/sync'
+
+  file_backup_sidecar:
+    container_name: s3_file_sync
+    image: s3_file_sync
+    build:
+      context: pds-s3-file-sync
+      dockerfile: Dockerfile
+    network_mode: host
+    depends_on:
+      db_backup_sidecar:
+        condition: service_healthy
+    volumes:
+      - pds-data:/sync
+      - $HOME/.aws/:/root/.aws/:ro
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      interval: 5m
+      timeout: 3s
+      retries: 3
+      start_period: 1m
+      start_interval: 5s
+    stop_signal: SIGTERM
+    stop_grace_period: 1m
+    environment:
+      AWS_REGION: 'us-east-2'
+      AWS_DEFAULT_REGION: 'us-east-2'
+      S3_PATH: "s3://${PDS_BACKUP_S3_BUCKET}/file-backup/actors"
+      LOCAL_PATH: '/sync/actors'
 
 volumes:
   pds-data:

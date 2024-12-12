@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-# This script syncs PDS on-disk data (SQLite databases) to an S3 bucket.
+# This script continuously syncs PDS' main SQLite databases to an S3 bucket, using Litestream.
 # When the container starts, the script will sync from the S3 bucket to the local directory
-# to initialize its local data.
-# Then, it will continuously sync database changes from the local directory to the S3 bucket.
-# On shutdown (SIGTERM), the container will sync from the local directory to the S3 bucket one last time.
+# to restore the databases on disk.
+# Then, Litestream will continuously sync database changes from the local directory to the S3 bucket.
+# On shutdown (SIGTERM), Litestream syncs from the local directory to the S3 bucket one last time.
 
 # Required environment variables:
 # AWS_DEFAULT_REGION: the region of the S3 bucket

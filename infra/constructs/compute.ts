@@ -26,7 +26,8 @@ export class Compute extends Construct {
   public readonly service: ecs.BaseService;
   public readonly targetGroup: elb.ApplicationTargetGroup;
   public readonly pdsLogGroup: logs.LogGroup;
-  public readonly syncLogGroup: logs.LogGroup;
+  public readonly litestreamLogGroup: logs.LogGroup;
+  public readonly fileBackupLogGroup: logs.LogGroup;
 
   constructor(parent: Construct, name: string, props: ComputeProps) {
     super(parent, name);
@@ -35,9 +36,18 @@ export class Compute extends Construct {
     const pdsImage = ecs.ContainerImage.fromAsset('./pds', {
       platform: ecr_assets.Platform.LINUX_AMD64,
     });
-    const pdsBackupImage = ecs.ContainerImage.fromAsset('./pds-data-backup', {
-      platform: ecr_assets.Platform.LINUX_AMD64,
-    });
+    const pdsLitestreamImage = ecs.ContainerImage.fromAsset(
+      './pds-litestream',
+      {
+        platform: ecr_assets.Platform.LINUX_AMD64,
+      }
+    );
+    const pdsFileBackupImage = ecs.ContainerImage.fromAsset(
+      './pds-s3-file-sync',
+      {
+        platform: ecr_assets.Platform.LINUX_AMD64,
+      }
+    );
 
     // Logging
     this.pdsLogGroup = new logs.LogGroup(this, 'ServiceLogGroup', {
@@ -47,7 +57,14 @@ export class Compute extends Construct {
           ? RemovalPolicy.DESTROY
           : RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
     });
-    this.syncLogGroup = new logs.LogGroup(this, 'PDSS3SyncLogGroup', {
+    this.litestreamLogGroup = new logs.LogGroup(this, 'LitestreamLogGroup', {
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy:
+        props.mode === Mode.TEST
+          ? RemovalPolicy.DESTROY
+          : RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+    });
+    this.fileBackupLogGroup = new logs.LogGroup(this, 'FileBackupLogGroup', {
       retention: logs.RetentionDays.ONE_WEEK,
       removalPolicy:
         props.mode === Mode.TEST
@@ -76,7 +93,7 @@ export class Compute extends Construct {
           image: pdsImage,
           containerPort: 3000,
           logDriver: ecs.LogDriver.awsLogs({
-            streamPrefix: 'PDSService',
+            streamPrefix: 'PDS',
             logGroup: this.pdsLogGroup,
           }),
           environment: {
@@ -162,25 +179,58 @@ export class Compute extends Construct {
       '30'
     );
 
-    // Add sidecar container that backs up and restores the PDS data to/from S3
-    // TODO backup the actors/ directory to S3
-    const sidecar = service.taskDefinition.addContainer('SyncContainer', {
-      containerName: 's3_sync',
-      image: pdsBackupImage,
-      logging: ecs.LogDriver.awsLogs({
-        streamPrefix: 'PDSS3Sync',
-        logGroup: this.syncLogGroup,
-      }),
-      environment: {
-        AWS_REGION: Stack.of(this).region,
-        AWS_DEFAULT_REGION: Stack.of(this).region,
-        S3_PATH: `s3://${props.appResources.dataBackupBucket.bucketName}/pds-backup`,
-        LOCAL_PATH: '/sync',
-      },
-      healthCheck: {
-        command: ['CMD', '/healthcheck.sh'],
-      },
-      stopTimeout: Duration.minutes(1),
+    // Add sidecar container that backs up and restores PDS databases to/from S3
+    const litestreamSidecar = service.taskDefinition.addContainer(
+      'LitestreamContainer',
+      {
+        containerName: 'litestream',
+        image: pdsLitestreamImage,
+        logging: ecs.LogDriver.awsLogs({
+          streamPrefix: 'Litestream',
+          logGroup: this.litestreamLogGroup,
+        }),
+        environment: {
+          AWS_REGION: Stack.of(this).region,
+          AWS_DEFAULT_REGION: Stack.of(this).region,
+          // CAUTION: changing this value will cause your PDS to lose
+          // track of its existing data in the previous bucket path
+          S3_PATH: `s3://${props.appResources.dataBackupBucket.bucketName}/litestream-replication`,
+          LOCAL_PATH: '/sync',
+        },
+        healthCheck: {
+          command: ['CMD', '/healthcheck.sh'],
+        },
+        stopTimeout: Duration.minutes(1),
+      }
+    );
+
+    // Add sidecar container that backs up and restores PDS files to/from S3
+    const fileBackupSidecar = service.taskDefinition.addContainer(
+      'FileBackupContainer',
+      {
+        containerName: 's3-file-sync',
+        image: pdsFileBackupImage,
+        logging: ecs.LogDriver.awsLogs({
+          streamPrefix: 'FileBackup',
+          logGroup: this.fileBackupLogGroup,
+        }),
+        environment: {
+          AWS_REGION: Stack.of(this).region,
+          AWS_DEFAULT_REGION: Stack.of(this).region,
+          // CAUTION: changing this value will cause your PDS to lose
+          // track of its existing data in the previous bucket path
+          S3_PATH: `s3://${props.appResources.dataBackupBucket.bucketName}/file-backup/actors`,
+          LOCAL_PATH: '/sync/actors',
+        },
+        healthCheck: {
+          command: ['CMD', '/healthcheck.sh'],
+        },
+        stopTimeout: Duration.minutes(1),
+      }
+    );
+    fileBackupSidecar.addContainerDependencies({
+      container: litestreamSidecar,
+      condition: ecs.ContainerDependencyCondition.HEALTHY,
     });
 
     // Create a volume for the PDS data
@@ -188,7 +238,12 @@ export class Compute extends Construct {
       name: 'pds-data',
       host: {},
     });
-    sidecar.addMountPoints({
+    litestreamSidecar.addMountPoints({
+      containerPath: '/sync',
+      readOnly: false,
+      sourceVolume: 'pds-data',
+    });
+    fileBackupSidecar.addMountPoints({
       containerPath: '/sync',
       readOnly: false,
       sourceVolume: 'pds-data',
@@ -200,10 +255,16 @@ export class Compute extends Construct {
     });
 
     // Ensure that databases have been restored in the sidecar container before starting PDS
-    service.taskDefinition.findContainer('pds')!.addContainerDependencies({
-      container: sidecar,
-      condition: ecs.ContainerDependencyCondition.HEALTHY,
-    });
+    service.taskDefinition.findContainer('pds')!.addContainerDependencies(
+      {
+        container: litestreamSidecar,
+        condition: ecs.ContainerDependencyCondition.HEALTHY,
+      },
+      {
+        container: fileBackupSidecar,
+        condition: ecs.ContainerDependencyCondition.HEALTHY,
+      }
+    );
 
     // Permissions needed by containers
     props.appResources.dataBackupBucket.grantReadWrite(
