@@ -1,0 +1,25 @@
+version: 2
+updates:
+- package-ecosystem: npm
+  directory: "/infra"
+  schedule:
+    interval: monthly
+  open-pull-requests-limit: 10
+  versioning-strategy: increase
+
+- package-ecosystem: docker
+  directory: "/infra/pds"
+  schedule:
+    interval: weekly
+
+- package-ecosystem: docker
+  directory: "/infra/pds-data-backup"
+  schedule:
+    interval: weekly
+
+- package-ecosystem: npm
+  directory: "/pipeline"
+  schedule:
+    interval: monthly
+  open-pull-requests-limit: 10
+  versioning-strategy: increase

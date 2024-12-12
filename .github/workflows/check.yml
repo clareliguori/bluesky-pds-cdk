@@ -1,0 +1,54 @@
+on:
+  [pull_request, push]
+
+name: Check
+
+jobs:
+  images:
+    name: Docker Images Build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-node@v3
+      with:
+        node-version: 16
+    - name: Test
+      run: |
+        cd infra
+        docker build pds/
+        docker build pds-data-backup/
+
+  infra:
+    name: Infra CDK Build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-node@v3
+      with:
+        node-version: 16
+    - name: Test
+      run: |
+        cd infra
+
+        npm install -g aws-cdk
+        npm ci
+
+        npm run build
+
+  pipeline:
+    name: Pipeline CDK Build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-node@v3
+      with:
+        node-version: 16
+    - name: Test
+      run: |
+        cd pipelines
+
+        npm install -g aws-cdk
+        npm ci
+
+        npm run build
+        cdk synth --app 'node pipeline.js'
