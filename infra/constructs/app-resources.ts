@@ -62,6 +62,7 @@ export class AppResources extends Construct {
     // Storage
 
     this.blobBucket = new s3.Bucket(this, 'BlobStorage', {
+      bucketName: props.domainName.replace(/\./g, '-') + '-blob',
       removalPolicy:
         props.mode === Mode.TEST
           ? RemovalPolicy.DESTROY
@@ -72,6 +73,7 @@ export class AppResources extends Construct {
     });
 
     this.dataBackupBucket = new s3.Bucket(this, 'DataBackupStorage', {
+      bucketName: props.domainName.replace(/\./g, '-') + '-backup',
       removalPolicy:
         props.mode === Mode.TEST
           ? RemovalPolicy.DESTROY
