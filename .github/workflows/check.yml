@@ -45,7 +45,7 @@ jobs:
         node-version: 16
     - name: Test
       run: |
-        cd pipelines
+        cd pipeline
 
         npm install -g aws-cdk
         npm ci
