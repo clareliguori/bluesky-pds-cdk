@@ -45,8 +45,8 @@ It also uses [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/)
 to generate and store its admin password and JWT secret key,
 and [AWS KMS](https://aws.amazon.com/kms/) for its PLC rotation key.
 [Amazon SES](https://aws.amazon.com/ses/) is used to send emails from the PDS.
-2. A **sidecar container** that uses [Litestream](https://litestream.io/)
-to continuously replicate the main PDS on-disk SQLite databases to S3.
+2. A **sidecar container** uses [Litestream](https://litestream.io/)
+to continuously replicate the main PDS SQLite databases to S3.
 On task launch, the sidecar starts before the PDS and restores the database files
 from S3 to the local disk (a shared volume with the PDS container).
 3. Another **sidecar container** backs up other PDS files to S3, such as individual user
