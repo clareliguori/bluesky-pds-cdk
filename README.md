@@ -16,11 +16,15 @@ flowchart LR
     C("PDS
     container") --- D("Litestream
     container")
+    C --- E("File backup
+    container")
   end
 
-  C --> E("Blob store
+  C --> F("Blob store
   S3 bucket")
-  D --> F("Database backup
+  D --> G("Backup
+  S3 bucket")
+  E --> G("Backup
   S3 bucket")
 ```
 
@@ -44,6 +48,10 @@ and [AWS KMS](https://aws.amazon.com/kms/) for its PLC rotation key.
 2. A **sidecar container** that uses [Litestream](https://litestream.io/)
 to continuously replicate the main PDS on-disk SQLite databases to S3.
 On task launch, the sidecar starts before the PDS and restores the database files
+from S3 to the local disk (a shared volume with the PDS container).
+3. Another **sidecar container** backs up other PDS files to S3, such as individual user
+SQLite databases.
+On task launch, the sidecar starts before the PDS and restores the on-disk files
 from S3 to the local disk (a shared volume with the PDS container).
 
 For monitoring, container logs are sent to [Amazon CloudWatch](https://aws.amazon.com/cloudwatch/).
