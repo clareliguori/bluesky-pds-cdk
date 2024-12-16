@@ -17,7 +17,11 @@ IFS=$'\n\t'
 
 # Log message
 log(){
-  echo "[$(date "+%Y-%m-%dT%H:%M:%S%z") - $(hostname)] ${*}"
+  echo "[$(date "+%Y-%m-%dT%H:%M:%S%z") - $(hostname)] [INFO] ${*}"
+}
+
+log_error(){
+  echo "[$(date "+%Y-%m-%dT%H:%M:%S%z") - $(hostname)] [ERROR] ${*}" >&2
 }
 
 # Restore from S3
@@ -26,7 +30,7 @@ function restore() {
 
     # Check if DB is provided
     if [ -z "$db" ]; then
-        echo "Error: DB argument is required"
+        log_error "Error: DB argument is required"
         exit 1
     fi
 
@@ -34,7 +38,7 @@ function restore() {
    # The restore command will fail if the file is already on disk,
    # but will succeed if there is no backup found on S3
    if ! eval litestream restore -if-replica-exists "$LOCAL_PATH"/"$db"; then
-     log "Could not restore $db" >&2; exit 1
+     log_error "Could not restore $db"; exit 1
    fi
 }
 
@@ -60,10 +64,10 @@ replicate_all_dbs(){
 # Main function
 main(){
   if [[ ! "$S3_PATH" =~ s3:// ]]; then
-    log 'No S3_PATH specified' >&2; exit 1
+    log_error 'No S3_PATH specified'; exit 1
   fi
   if [[ ! "$LOCAL_PATH" =~ / ]]; then
-    log 'No LOCAL_PATH specified' >&2; exit 1
+    log_error 'No LOCAL_PATH specified'; exit 1
   fi
 
   log "Litestream configuration"

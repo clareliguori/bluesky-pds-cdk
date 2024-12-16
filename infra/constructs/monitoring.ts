@@ -37,7 +37,9 @@ export class Monitoring extends Construct {
       'TargetGroupUnhealthyHosts',
       {
         alarmName: Stack.of(this).stackName + '-Unhealthy-Hosts',
-        metric: props.compute.targetGroup.metrics.unhealthyHostCount(),
+        metric: props.compute.targetGroup.metrics.unhealthyHostCount({
+          statistic: cloudwatch.Stats.MAXIMUM,
+        }),
         comparisonOperator:
           cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
         threshold: 1,
@@ -94,10 +96,26 @@ export class Monitoring extends Construct {
     });
     faultAlarm.addAlarmAction(new cw_actions.SnsAction(topic));
 
-    const errorLogsMetricFilter = props.compute.pdsLogGroup.addMetricFilter(
-      'LogErrorFilter',
+    // Metric filters feed into the same metric, to capture
+    // structured logs (PDS) and unstructured logs (sidecars)
+    const errorStructuredLogsMetricFilter =
+      props.compute.pdsLogGroup.addMetricFilter('StructuredLogErrorFilter', {
+        filterPattern: logs.FilterPattern.exists('$.err.type'),
+        metricName: 'PDSLogErrors',
+        metricNamespace: props.domainName.replace(/\./g, '-'),
+      });
+    props.compute.litestreamLogGroup.addMetricFilter(
+      'LitestreamLogErrorFilter',
       {
-        filterPattern: logs.FilterPattern.literal('{ $.err.type = "*" }'),
+        filterPattern: logs.FilterPattern.anyTerm('[ERROR]'),
+        metricName: 'PDSLogErrors',
+        metricNamespace: props.domainName.replace(/\./g, '-'),
+      }
+    );
+    props.compute.fileBackupLogGroup.addMetricFilter(
+      'FileBackupLogErrorFilter',
+      {
+        filterPattern: logs.FilterPattern.anyTerm('[ERROR]'),
         metricName: 'PDSLogErrors',
         metricNamespace: props.domainName.replace(/\./g, '-'),
       }
@@ -105,7 +123,10 @@ export class Monitoring extends Construct {
     const logErrorsAlarm = new cloudwatch.Alarm(this, 'LogErrors', {
       alarmName: Stack.of(this).stackName + '-Log-Errors',
       alarmDescription: 'Errors found in the logs',
-      metric: errorLogsMetricFilter.metric(),
+      metric: errorStructuredLogsMetricFilter.metric({
+        statistic: cloudwatch.Stats.SUM,
+        period: Duration.minutes(1),
+      }),
       comparisonOperator:
         cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
       threshold: 1,

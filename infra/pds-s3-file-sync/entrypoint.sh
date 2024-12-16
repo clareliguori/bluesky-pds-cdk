@@ -20,7 +20,11 @@ CRON_TIME="*/5 * * * *"
 
 # Log message
 log(){
-  echo "[$(date "+%Y-%m-%dT%H:%M:%S%z") - $(hostname)] ${*}"
+  echo "[$(date "+%Y-%m-%dT%H:%M:%S%z") - $(hostname)] [INFO] ${*}"
+}
+
+log_error(){
+  echo "[$(date "+%Y-%m-%dT%H:%M:%S%z") - $(hostname)] [ERROR] ${*}" >&2
 }
 
 # Sync files
@@ -33,7 +37,7 @@ sync_files(){
 
   log "Sync '${src}' to '${dst}'"
   if ! eval aws s3 sync "$sync_cmd" "$src" "$dst"; then
-    log "Could not sync '${src}' to '${dst}'" >&2; return 1
+    log_error "Could not sync '${src}' to '${dst}'"; return 1
   fi
   return 0
 }
@@ -44,7 +48,7 @@ function restore() {
   rm -f /tmp/restore_success
   if [[ -d "$LOCAL_PATH" ]]; then
     # directory exists
-    log "${LOCAL_PATH} already exists; cannot do initial download"; exit 1
+    log_error "${LOCAL_PATH} already exists; cannot do initial download"; exit 1
   else
     # directory does not exist, create it
     mkdir -p "$LOCAL_PATH"
@@ -78,10 +82,10 @@ function start_periodic_replication(){
 # Main function
 main(){
   if [[ ! "$S3_PATH" =~ s3:// ]]; then
-    log 'No S3_PATH specified' >&2; exit 1
+    log_error 'No S3_PATH specified'; exit 1
   fi
   if [[ ! "$LOCAL_PATH" =~ / ]]; then
-    log 'No LOCAL_PATH specified' >&2; exit 1
+    log_error 'No LOCAL_PATH specified'; exit 1
   fi
 
   # Parse command line arguments
@@ -94,7 +98,7 @@ main(){
       start_periodic_replication
       ;;
     *)
-      log "Unknown command: ${cmd}"; exit 1
+      log_error "Unknown command: ${cmd}"; exit 1
       ;;
   esac
 
