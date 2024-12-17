@@ -136,5 +136,7 @@ export class Monitoring extends Construct {
     logErrorsAlarm.addAlarmAction(new cw_actions.SnsAction(topic));
 
     // TODO custom dashboard
+
+    // TODO: add a monitoring canary?
   }
 }

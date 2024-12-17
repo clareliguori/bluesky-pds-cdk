@@ -25,6 +25,29 @@ To automate this process, enable
 to keep the PDS image tag up to date,
 and let a CI/CD pipeline re-build and re-deploy the CDK template.
 
+### PDS assumptions that could change
+
+I have made several assumptions about PDS behavior in this template.
+That behavior could change in the future with newer versions, so it's
+important to check release notes for any major changes to behavior.
+
+This template assumes that PDS writes data to these files and directories,
+and only backs these up. Data loss will occur if a newer version of PDS
+writes data to additional locations:
+* `account.sqlite`
+* `did_cache.sqlite`
+* `sequencer.sqlite`
+* `actors.sqlite`
+* `actors/`
+
+This template also assumes that these are the only paths that must be served
+by the PDS. Federation may break if a newer version of PDS requires additional
+paths to be served:
+* `/xrpc/*`
+* `/.well-known/*`
+* `/oauth/*`
+* `/tls-check`
+
 ## Monitoring and troubleshooting
 
 Logs can be viewed in the ECS console:
