@@ -2,8 +2,8 @@ version: 0.2
 
 env:
   variables:
-    BSKY_PDS_URL: "https://pds.example.com"
-    BSKY_PDS_WSS_URL: "wss://pds.example.com"
+    BSKY_PDS_URL: "https://pds.reinvent-trivia.com"
+    BSKY_PDS_WSS_URL: "wss://pds.reinvent-trivia.com"
   secrets-manager:
     BSKY_HANDLE: "PdsCredentials:HANDLE"
     BSKY_PASSWORD: "PdsCredentials:PASSWORD"
