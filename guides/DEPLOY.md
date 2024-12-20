@@ -64,13 +64,13 @@ cdk deploy --profile default --app 'node service.js'
 Your PDS should now be accessible:
 
 ```bash
-curl https://example.com/xrpc/_health
+curl https://pds.reinvent-trivia.com/xrpc/_health
 ```
 
 WebSockets should also work:
 
 ```bash
-wsdump "wss://example.com/xrpc/com.atproto.sync.subscribeRepos?cursor=0"
+wsdump "wss://pds.reinvent-trivia.com/xrpc/com.atproto.sync.subscribeRepos?cursor=0"
 ```
 
 And the pdsadmin command should work:
