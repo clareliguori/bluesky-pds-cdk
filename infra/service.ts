@@ -31,9 +31,9 @@ class BlueskyPdsInfraStack extends Stack {
 
 const app = new App();
 new BlueskyPdsInfraStack(app, 'BlueskyPdsInfra', {
-  mode: Mode.TEST,
-  domainName: 'pds.example.com',
-  domainZone: 'pds.example.com',
+  mode: Mode.PROD,
+  domainName: 'pds.reinvent-trivia.com',
+  domainZone: 'reinvent-trivia.com',
   env: { account: process.env['CDK_DEFAULT_ACCOUNT'], region: 'us-east-2' },
   tags: {
     project: 'bluesky-pds',
