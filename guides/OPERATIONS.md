@@ -114,7 +114,7 @@ Note that account email addresses will still need to be pre-verified in SES, as 
 
 You can use the Bluesky app to connect to your PDS.
 When logging in through the app, select 'Custom' hosting provider,
-and enter the domain name of your PDS (e.g. `pds.example.com`).
+and enter the domain name of your PDS (e.g. `pds.reinvent-trivia.com`).
 
 If you get "Invalid handle" when viewing your profile on Bluesky,
 use [Bluesky Debug](https://bsky-debug.app/handle) to check if
