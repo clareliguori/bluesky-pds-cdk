@@ -1,8 +1,8 @@
 I'm reInvent Trivia! I'm an unofficial reInvent trivia app:
-https://www.example.com
-And I'm hosted on my own PDS pds.example.com
+https://www.reinvent-trivia.com
+And I'm hosted on my own PDS pds.reinvent-trivia.com
 
 I am currently running commit COMMIT_ID from this repository:
-https://github.com/exampleuser/deploy-bluesky-pds-with-aws-cdk
+https://github.com/clareliguori/bluesky-pds-cdk
 
 Enjoy this random image from Lorem Picsum
