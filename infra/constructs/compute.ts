@@ -76,7 +76,6 @@ export class Compute extends Construct {
     });
 
     // Load balancer
-    // amazonq-ignore-next-line
     const loadBalancer = new elb.ApplicationLoadBalancer(this, 'LB', {
       vpc: props.network.vpc,
       internetFacing: true,
@@ -86,6 +85,7 @@ export class Compute extends Construct {
       protocol: elb.ApplicationProtocol.HTTPS,
       open: true,
       certificates: [props.network.certificate],
+      sslPolicy: elb.SslPolicy.RECOMMENDED_TLS,
       // allow-list paths to block traffic crawling for exploits
       defaultAction: elb.ListenerAction.fixedResponse(403),
     });
