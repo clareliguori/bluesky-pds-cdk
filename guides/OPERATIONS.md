@@ -46,6 +46,7 @@ paths to be served:
 * `/xrpc/*`
 * `/.well-known/*`
 * `/oauth/*`
+* `/@atproto/*`
 * `/tls-check`
 
 ## Monitoring and troubleshooting

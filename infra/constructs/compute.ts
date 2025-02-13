@@ -114,7 +114,7 @@ export class Compute extends Construct {
           '/xrpc/*',
           '/.well-known/*',
           '/oauth/*',
-          '/@atproto/oauth-provider/*',
+          '/@atproto/*',
           '/tls-check',
         ]),
       ],
