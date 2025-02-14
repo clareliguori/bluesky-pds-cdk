@@ -195,7 +195,9 @@ export class Compute extends Construct {
         PDS_REPORT_SERVICE_URL: 'https://mod.bsky.app',
         PDS_REPORT_SERVICE_DID: 'did:plc:ar7c4by46qjdydhdevvrndac',
         PDS_CRAWLERS: 'https://bsky.network',
-        PDS_SERVICE_HANDLE_DOMAINS: `.${props.domainName}`,
+        PDS_SERVICE_HANDLE_DOMAINS: [
+          ...new Set([`.${props.domainName}`, `.${props.domainZone}`]),
+        ],
         LOG_ENABLED: 'true',
         SMTP_HOST: `email-smtp.${Stack.of(this).region}.amazonaws.com`,
       },
