@@ -92,7 +92,7 @@ export class Monitoring extends Construct {
       comparisonOperator:
         cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
       threshold: 1,
-      evaluationPeriods: 1,
+      evaluationPeriods: 2,
     });
     faultAlarm.addAlarmAction(new cw_actions.SnsAction(topic));
 
@@ -130,7 +130,7 @@ export class Monitoring extends Construct {
       comparisonOperator:
         cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
       threshold: 1,
-      evaluationPeriods: 1,
+      evaluationPeriods: 2,
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
     logErrorsAlarm.addAlarmAction(new cw_actions.SnsAction(topic));
