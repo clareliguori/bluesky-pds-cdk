@@ -44,7 +44,7 @@ By default, the template will deploy in a test mode, where all data is cleaned u
 from the account (S3 objects, CloudWatch logs, etc) when the CloudFormation stack is
 deleted. In the production mode, data is retained in the account if the CloudFormation
 stack is accidentally deleted or if certain resources are accidentally replaced in
-the stack.  If you are ready to deploy in production mode, edit `infra/service.ts`,
+the stack. If you are ready to deploy in production mode, edit `infra/service.ts`,
 and replace `mode: Mode.TEST` with `mode: Mode.PROD`.
 
 ```bash
@@ -78,6 +78,7 @@ And the pdsadmin command should work:
 ```bash
 ./ops/pdsadmin.sh account list
 ```
+
 NOTE: This template requires the customized version of pdsadmin found in this repository.
 The pdsadmin script from the main [Bluesky PDS repository](https://github.com/bluesky-social/pds) will not work.
 
@@ -97,6 +98,18 @@ https://us-east-1.console.aws.amazon.com/costmanagement/home?region=us-east-1#/t
 ## Deploy a CI/CD pipeline (optional)
 
 The CI/CD pipeline can automatically deploy changes to your PDS from your repository on GitHub.
+
+### Create a test handle
+
+The CI/CD pipeline will run integration tests using a test handle registered on the PDS.
+Create a test account on your PDS using the instructions in [OPERATIONS.md](OPERATIONS.md).
+
+```
+aws secretsmanager create-secret \
+    --region us-east-2 \
+    --name PdsCredentials \
+    --secret-string "{\"HANDLE\": \"<your test handle>\", \"PASSWORD\": \"<your test account password>\"}"
+```
 
 ### Deploy the pipeline
 

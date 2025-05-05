@@ -1,0 +1,67 @@
+version: 0.2
+
+env:
+  variables:
+    BSKY_PDS_URL: "https://pds.example.com"
+    BSKY_PDS_WSS_URL: "wss://pds.example.com"
+  secrets-manager:
+    BSKY_HANDLE: "PdsCredentials:HANDLE"
+    BSKY_PASSWORD: "PdsCredentials:PASSWORD"
+
+phases:
+  install:
+    commands:
+      - wget --no-verbose https://github.com/mattn/bsky/releases/download/v0.0.73/bsky-linux-0.0.73.zip
+      - unzip bsky-linux-0.0.73.zip
+      - ./bsky login --host $BSKY_PDS_URL $BSKY_HANDLE $BSKY_PASSWORD
+      - pip install -r ./tests/test_wss/requirements.txt
+
+  build:
+    commands:
+      # Validate basic routes
+      # https://github.com/bluesky-social/atproto/blob/main/packages/pds/src/basic-routes.ts
+      - curl -s --fail-with-body $BSKY_PDS_URL/ | grep OK
+      - curl -s --fail-with-body $BSKY_PDS_URL/robots.txt
+      - curl -s --fail-with-body $BSKY_PDS_URL/xrpc/_health
+
+      # Validate auth routes
+      # https://github.com/bluesky-social/atproto/blob/main/packages/pds/src/auth-routes.ts
+      - curl -s --fail-with-body $BSKY_PDS_URL/.well-known/oauth-protected-resource
+      - curl -s --fail-with-body $BSKY_PDS_URL/.well-known/oauth-authorization-server
+
+      # Validate well-known routes
+      # https://github.com/bluesky-social/atproto/blob/main/packages/pds/src/well-known.ts
+      - curl -s -w ' %{http_code}' $BSKY_PDS_URL/.well-known/atproto-did | grep "User not found 404"
+
+      # Validate xrpc routes
+      - curl -s --fail-with-body $BSKY_PDS_URL/xrpc/com.atproto.server.describeServer
+      - curl -s --fail-with-body $BSKY_PDS_URL/xrpc/com.atproto.sync.listRepos?limit=1
+      - curl -s -w ' %{http_code}' $BSKY_PDS_URL/xrpc/com.atproto.admin.getAccountInfo?did=hello-world | grep 'AuthenticationRequired.*401'
+
+      # Validate web sockets
+      - cd tests/test_wss/
+      - python main.py
+      - cd ../..
+
+      # Validate unknown paths
+      - curl -s -w '%{http_code}' $BSKY_PDS_URL/hello-world | grep 403
+
+      # Validate read path for a test handle
+      - ./bsky show-profile
+      - ./bsky timeline -n 1
+
+      - PROFILE_DATA=$(./bsky show-profile --json)
+      - echo $PROFILE_DATA | jq --exit-status 'if (.description | length) > 0 then true else false end' > /dev/null
+      - echo $PROFILE_DATA | jq --exit-status 'if (.postsCount) > 0 then true else false end' > /dev/null
+      - echo $PROFILE_DATA | jq --exit-status 'if (.followersCount) > 0 then true else false end' > /dev/null
+      - echo $PROFILE_DATA | jq --exit-status 'if (.followsCount) > 0 then true else false end' > /dev/null
+
+      - POST_DATA=$(./bsky timeline -n 1 --json)
+      - echo $POST_DATA | jq --exit-status 'if (.post.record.text | length) > 0 then true else false end' > /dev/null
+
+      # Validate write path for a test handle
+      - CODEBUILD_RESOLVED_SOURCE_VERSION=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -b -7)
+      - COMMIT_ID=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -b -7)
+      - POST_CONTENTS=$(cat ./tests/sample_test_post.txt | sed "s/COMMIT_ID/$COMMIT_ID/g")
+      - wget --no-verbose -O post.jpg https://picsum.photos/600/600.jpg
+      - ./bsky post --image post.jpg "$POST_CONTENTS"
