@@ -36,7 +36,7 @@ phases:
       # Validate xrpc routes
       - curl -s --fail-with-body $BSKY_PDS_URL/xrpc/com.atproto.server.describeServer
       - curl -s --fail-with-body $BSKY_PDS_URL/xrpc/com.atproto.sync.listRepos?limit=1
-      - curl -s -w ' %{http_code}' $BSKY_PDS_URL/xrpc/com.atproto.admin.getAccountInfo?did=hello-world | grep 'AuthenticationRequired.*401'
+      - curl -s -w ' %{http_code}' $BSKY_PDS_URL/xrpc/com.atproto.admin.getAccountInfo?did=did:plc:hello-world | grep 'AuthenticationRequired.*401'
 
       # Validate web sockets
       - cd tests/test_wss/
