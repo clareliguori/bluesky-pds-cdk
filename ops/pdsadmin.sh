@@ -3,54 +3,54 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-# This is a fork of the official pdsadmin.sh script,
-# which first pulls the PDS admin password from Secrets Manager.
-# The original is here:
-# https://raw.githubusercontent.com/bluesky-social/pds/refs/heads/main/pdsadmin.sh
-
-PDSADMIN_BASE_URL="https://raw.githubusercontent.com/bluesky-social/pds/main/pdsadmin"
-
-# Command to run.
-COMMAND="${1:-help}"
-shift || true
-
-# Validate that the value of COMMAND is not 'update'
-if [[ "${COMMAND}" == "update" ]]; then
-  echo "ERROR: Cannot run pdsadmin update"
-  echo "ERROR: To update PDS, update the Docker image in this repository, and re-deploy the CDK template"
-  exit 1
-fi
+# This script runs goat CLI admin commands inside the PDS container via ECS Exec.
+# The goat binary is included in the upstream PDS container image.
+# See: https://github.com/bluesky-social/goat
+#
+# Usage:
+#   ./ops/pdsadmin.sh account create
+#   ./ops/pdsadmin.sh account list
+#   ./ops/pdsadmin.sh create-invites
+#   ./ops/pdsadmin.sh --help
+#
+# All arguments are passed directly to: goat pds admin <args>
 
 # Use minimal PDS env file
 ADMIN_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-export PDS_ENV_FILE="${ADMIN_SCRIPT_DIR}/pds.env"
+PDS_ENV_FILE="${ADMIN_SCRIPT_DIR}/pds.env"
+source "${PDS_ENV_FILE}"
 
-# Get the Secrets Manager secret ID from the CloudFormation output value
-# of the PDS stack.
-PDS_ADMIN_PASSWORD_SECRET_ID="$(aws cloudformation describe-stacks --region us-east-2 --stack-name BlueskyPdsInfra --query 'Stacks[0].Outputs[?OutputKey==`AdminPasswordID`].OutputValue' --output text)"
-if [[ -z "${PDS_ADMIN_PASSWORD_SECRET_ID:-}" ]]; then
-  echo "ERROR: PDS admin password secret ID not found from CloudFormation stack"
+CLUSTER_NAME="$(echo $PDS_HOSTNAME | sed 's/\./-/g')"
+SERVICE_NAME=$CLUSTER_NAME
+
+# Block the 'update' command - updates are done via Dockerfile tag + CDK redeploy
+if [[ "${1:-}" == "update" ]]; then
+  echo "ERROR: Cannot run pdsadmin update"
+  echo "ERROR: To update PDS, update the Docker image tag in infra/pds/Dockerfile, and re-deploy the CDK template"
   exit 1
 fi
 
-# Get the PDS admin password from Secrets Manager.
-PDS_ADMIN_PASSWORD_VALUE="$(aws secretsmanager get-secret-value --region us-east-2 --secret-id $PDS_ADMIN_PASSWORD_SECRET_ID --query SecretString --output text)"
-if [[ -z "${PDS_ADMIN_PASSWORD_VALUE:-}" ]]; then
-  echo "ERROR: PDS admin password not found"
+# Find the task ARN for the service
+TASK_ARN="$(aws ecs list-tasks \
+  --cluster "$CLUSTER_NAME" \
+  --service-name "$SERVICE_NAME" \
+  --desired-status RUNNING \
+  --query 'taskArns[0]' \
+  --output text \
+  --region us-east-2)"
+
+if [[ -z "${TASK_ARN:-}" || "${TASK_ARN}" == "None" ]]; then
+  echo "ERROR: No running PDS task found. Is the service running?"
   exit 1
 fi
-export PDS_ADMIN_PASSWORD="${PDS_ADMIN_PASSWORD_VALUE}"
 
-# Download the script, if it exists.
-SCRIPT_URL="${PDSADMIN_BASE_URL}/${COMMAND}.sh"
-SCRIPT_FILE="$(mktemp /tmp/pdsadmin.${COMMAND}.XXXXXX)"
-
-if ! curl --fail --silent --show-error --location --output "${SCRIPT_FILE}" "${SCRIPT_URL}"; then
-  echo "ERROR: ${COMMAND} not found"
-  exit 2
-fi
-
-chmod +x "${SCRIPT_FILE}"
-if "${SCRIPT_FILE}" "$@"; then
-  rm --force "${SCRIPT_FILE}"
-fi
+# Run goat pds admin command inside the PDS container via ECS Exec.
+# PDS_ADMIN_PASSWORD is already set in the container's environment,
+# so goat can authenticate without passing credentials explicitly.
+exec aws ecs execute-command \
+  --region us-east-2 \
+  --cluster "$CLUSTER_NAME" \
+  --task "$TASK_ARN" \
+  --container 'pds' \
+  --interactive \
+  --command "goat pds admin $*"

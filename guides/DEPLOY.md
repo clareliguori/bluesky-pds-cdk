@@ -79,8 +79,8 @@ And the pdsadmin command should work:
 ./ops/pdsadmin.sh account list
 ```
 
-NOTE: This template requires the customized version of pdsadmin found in this repository.
-The pdsadmin script from the main [Bluesky PDS repository](https://github.com/bluesky-social/pds) will not work.
+This runs [`goat`](https://github.com/bluesky-social/goat) admin commands inside the PDS container via ECS Exec.
+Run `./ops/pdsadmin.sh --help` for available commands.
 
 You can now create an account on your PDS (see [OPERATIONS.md](OPERATIONS.md) for instructions).
 

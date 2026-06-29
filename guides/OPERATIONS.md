@@ -4,7 +4,7 @@ Below are some instructions specific to how to operate your self-hosted Bluesky 
 after deploying it with this template.
 Also review the [Readme](https://github.com/bluesky-social/pds/blob/main/README.md)
 on the official Bluesky PDS repo for additional guidance.
-The [AT Protocol PDS Admins Discord](https://discord.gg/e7hpHxRfBP) is another resource
+The [ATProto Touchers Discord](https://discord.atprotocol.dev/) is another resource
 for self-hosting guidance and important updates about the PDS distribution.
 
 ## Keep your PDS up to date
@@ -47,6 +47,7 @@ paths to be served:
 * `/.well-known/*`
 * `/oauth/*`
 * `/@atproto/*`
+* `/account`, `/account/*`
 * `/tls-check`
 
 ## Monitoring and troubleshooting
@@ -95,11 +96,12 @@ Click on the email verification link in the email.
 Use pdsadmin to create an account on your PDS and generate a password for the account.
 
 ```bash
-./ops/pdsadmin.sh account create
+./ops/pdsadmin.sh account create --handle alice.pds.example.com --email alice@example.com --password <password>
 ```
 
-NOTE: This CDK template requires the customized version of pdsadmin found in this repository.
-The pdsadmin script from the main [Bluesky PDS repository](https://github.com/bluesky-social/pds) will not work.
+This runs the [`goat` CLI](https://github.com/bluesky-social/goat) inside the PDS container
+via ECS Exec. All arguments are passed to `goat pds admin`. Run `./ops/pdsadmin.sh --help`
+for all available commands.
 
 ### Create an account using an invite code
 
@@ -107,7 +109,7 @@ You can also create an invite code on your PDS and create an account through the
 Note that account email addresses will still need to be pre-verified in SES, as in the section above.
 
 ```bash
-./ops/pdsadmin.sh create-invite-code
+./ops/pdsadmin.sh create-invites
 ```
 
 ### Log into the Bluesky app

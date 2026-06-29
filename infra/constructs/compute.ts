@@ -115,6 +115,8 @@ export class Compute extends Construct {
           '/.well-known/*',
           '/oauth/*',
           '/@atproto/*',
+          '/account',
+          '/account/*',
           '/tls-check',
         ]),
       ],
