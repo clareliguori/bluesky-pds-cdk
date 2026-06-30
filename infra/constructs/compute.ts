@@ -115,10 +115,17 @@ export class Compute extends Construct {
           '/.well-known/*',
           '/oauth/*',
           '/@atproto/*',
-          '/account',
-          '/account/*',
           '/tls-check',
         ]),
+      ],
+    });
+
+    // Additional paths forwarded to PDS (ALB limits rules to 5 path patterns each)
+    listener.addAction('PdsAccount', {
+      action: elb.ListenerAction.forward([this.targetGroup]),
+      priority: 4,
+      conditions: [
+        elb.ListenerCondition.pathPatterns(['/account', '/account/*']),
       ],
     });
 
